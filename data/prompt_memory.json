@@ -1,0 +1,29 @@
+{
+  "facts": [],
+  "history": [
+    {
+      "user": "Hola, esto es una prueba de voz nueva como loquita.",
+      "assistant": "¡Hola! 👋 \n\nPerfecto, te escucho bien. Parece que tu sistema de voz está funcionando correctamente. \n\n¿En qué puedo ayudarte hoy?"
+    },
+    {
+      "user": "Hola, esto es una prueba de voz nueva como loquita.",
+      "assistant": "¡Hola! 👋 \n\nRecibido alto y claro. Prueba de voz funcionando perfectamente. \n\n¿En qué puedo ayudarte hoy?"
+    },
+    {
+      "user": "Hola, esto es una prueba de voz nueva como loquita.",
+      "assistant": "¡Hola! 👋\n\nRecibido alto y claro. Tu prueba de voz funcionó perfectamente.\n\n¿En qué puedo ayudarte hoy?"
+    },
+    {
+      "user": "Hola, esto es una prueba de voz nueva como loquita.",
+      "assistant": "¡Hola! 👋 \n\nEntiendo, estás probando una nueva función de voz. Te escucho perfectamente bien.\n\n¿En qué puedo ayudarte hoy? Estoy listo para responder tus preguntas de forma clara y directa."
+    },
+    {
+      "user": "estoy como Lloquita",
+      "assistant": "Entiendo que estás un poco loca o alterada. ¿Qué está pasando? ¿Estás:\n\n- **Emocionada/eufórica** por algo bueno?\n- **Estresada/abrumada** por algo que te tiene mal?\n- **Ansiosa/nerviosa** sin razón clara?\n- **Cansada** al punto de estar \"ida\"?\n\nCuéntame más para poder ayudarte mejor. ¿Qué te tiene así?"
+    },
+    {
+      "user": "Hola, mi nombre es Gonzalo. ¿Cómo estás?",
+      "assistant": "Hola Gonzalo, estoy bien, gracias por preguntar.\n\n¿Ya se te pasó lo de estar \"lloquita\" o sigues alterado? 😄\n\n¿En qué puedo ayudarte hoy?"
+    }
+  ]
+}

@@ -17,22 +17,39 @@ def _anthropic_chat(messages: List[Dict[str, str]], model: str = CLAUDE_MODEL, m
     if not (ANTHROPIC_API_KEY or os.getenv("ANTHROPIC_API_KEY")):
         raise RuntimeError("Falta ANTHROPIC_API_KEY en entorno (.env)")
 
+    # 1) separar el/los system de los mensajes user/assistant
+    system_parts = [m.get("content", "") for m in messages if m.get("role") == "system" and m.get("content")]
+    system = "\n\n".join(system_parts) if system_parts else None
+
+    msg_payload = [
+        {"role": m["role"], "content": m["content"]}
+        for m in messages
+        if m.get("role") in ("user", "assistant")
+    ]
+
     client = anthropic.Anthropic()
-    resp = client.messages.create(
+    kwargs = dict(
         model=model,
         max_tokens=max_tokens,
         temperature=temperature,
-        messages=messages
+        messages=msg_payload,
     )
-    # Claude devuelve una lista de 'content' (bloques). Tomamos el texto plano.
+    if system:
+        kwargs["system"] = system  # <- AQUÍ va el system prompt
+
+    resp = client.messages.create(**kwargs)
+
+    # extraer texto
     blocks = getattr(resp, "content", []) or []
-    text = ""
+    out = []
     for b in blocks:
+        # SDK nuevo: objetos con atributo .type / .text
         if getattr(b, "type", "") == "text":
-            text += b.text
-        elif isinstance(b, dict) and b.get("type") == "text":  # por si viene dict
-            text += b.get("text", "")
-    return text.strip()
+            out.append(b.text)
+        elif isinstance(b, dict) and b.get("type") == "text":
+            out.append(b.get("text", ""))
+    return "".join(out).strip()
+
 
 # --- Ollama (opcional) ---
 def _ollama_chat(messages: List[Dict[str, str]], model: str = "qwen2.5:0.5b", stream: bool = False) -> str:
