@@ -28,3 +28,9 @@ def append_fact(mem: Dict[str, Any], fact: str | None):
     if fact and fact.lower() != "n/a":
         mem.setdefault("facts", []).append(fact.strip())
     return mem
+
+def clear_memory():
+    """Limpia completamente la memoria persistente"""
+    mem = {"facts": [], "history": []}
+    save_memory(mem)
+    return mem

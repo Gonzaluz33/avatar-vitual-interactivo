@@ -4,6 +4,7 @@ import Header from './components/Header'
 import ChatInterface from './components/ChatInterface'
 import VoiceRecorder from './components/VoiceRecorder'
 import StatusBar from './components/StatusBar'
+import TTSControls from './components/TTSControls'
 
 function App() {
   const { wsStatus, connect } = useApp()
@@ -36,6 +37,7 @@ function App() {
           {/* Panel lateral - Controles de voz */}
           <div className="lg:col-span-1">
             <VoiceRecorder />
+            <TTSControls />
             <StatusBar />
           </div>
         </div>

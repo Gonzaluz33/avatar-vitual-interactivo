@@ -43,6 +43,12 @@ async def root():
 async def health():
     return {"status": "ok", "turn": pipeline.turn, "elapsed_min": pipeline.current_elapsed_min()}
 
+@app.post("/reset")
+async def reset():
+    """Reinicia la sesión y limpia toda la memoria"""
+    result = pipeline.reset()
+    return JSONResponse(result)
+
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...)):
     """Transcribe un archivo de audio a texto"""

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext'
-import { Send, Trash2 } from 'lucide-react'
+import { Send, Trash2, Volume2 } from 'lucide-react'
 
 const ChatInterface = () => {
-  const { messages, isProcessing, sendTextMessage, clearMessages } = useApp()
+  const { messages, isProcessing, isSpeaking, sendTextMessage, clearMessages } = useApp()
   const [inputText, setInputText] = useState('')
   const messagesEndRef = useRef(null)
 
@@ -73,11 +73,19 @@ const ChatInterface = () => {
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 <div className="flex items-center justify-between mt-2 text-xs opacity-70">
                   <span>{formatTime(message.timestamp)}</span>
-                  {message.role === 'assistant' && message.systemPrompt && (
-                    <span className="ml-2 italic" title={message.systemPrompt}>
-                      🤖 Modo adaptativo
-                    </span>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {message.role === 'assistant' && message.systemPrompt && (
+                      <span className="italic" title={message.systemPrompt}>
+                        🤖 Modo adaptativo
+                      </span>
+                    )}
+                    {message.role === 'assistant' && index === messages.length - 1 && isSpeaking && (
+                      <span className="flex items-center space-x-1 text-green-600 dark:text-green-400">
+                        <Volume2 className="w-3 h-3 animate-pulse" />
+                        <span>Reproduciendo</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

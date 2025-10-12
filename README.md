@@ -123,6 +123,10 @@ chmod +x start.sh
 
 - **GET** `/` - Información de la API
 - **GET** `/health` - Estado del sistema y sesión
+- **POST** `/reset` - Reiniciar sesión y limpiar memoria
+  - Limpia todo el historial y la memoria persistente
+  - Retorna: `{ message, turn, elapsed_min }`
+  
 - **POST** `/transcribe` - Transcribir archivo de audio
   - Multipart form-data con campo `file`
   - Retorna: `{ text, segments }`
@@ -190,14 +194,34 @@ chmod +x start.sh
 3. **Detén la grabación**: Presiona "Detener Grabación" cuando termines
 4. **Recibe la respuesta**: El sistema transcribe, procesa y responde automáticamente
 5. **Chat de texto**: También puedes escribir mensajes en el input de texto
+6. **Text-to-Speech**: Las respuestas se leen automáticamente con voz adaptativa
 
 ### Características de la interfaz
 
 - 💬 **Panel de conversación**: Muestra todo el historial
 - 🎤 **Control de voz**: Botón para grabar audio con visualizador
-- 📊 **Barra de estado**: Turnos y tiempo transcurrido
-- 🔄 **Indicadores**: Estado de conexión y procesamiento
+- � **Text-to-Speech (TTS)**: Lee las respuestas en voz alta automáticamente
+- 🎭 **Voces dinámicas**: La voz cambia según el tiempo de conversación
+- �📊 **Barra de estado**: Turnos y tiempo transcurrido
+- 🔄 **Indicadores**: Estado de conexión, procesamiento y reproducción
 - 🌓 **Dark mode**: Alterna entre modo claro y oscuro
+
+### 🎭 Sistema de Voces Adaptativas
+
+El TTS cambia automáticamente la voz según el tiempo transcurrido para simular la evolución de la personalidad:
+
+| Tiempo | Personaje | Características de Voz |
+|--------|-----------|------------------------|
+| 0-10 min | Facundo (6-8 años) | Voz aguda, rápida, infantil |
+| 10-20 min | Rodrigo (9-12 años) | Voz media-aguda, pre-adolescente |
+| 20-35 min | Javier (13-15 años) | Voz adolescente, más grave |
+| 35-50 min | Marcelo (16-18 años) | Voz joven adulta |
+| 50+ min | Ricardo (Adulto) | Voz adulta madura |
+
+**Control de TTS:**
+- ✅ Activar/Desactivar TTS con el botón 🔊
+- ⏹️ Detener reproducción en cualquier momento
+- 📊 Indicador visual cuando está reproduciendo
 
 ## 🎛️ System Prompt Scheduler
 

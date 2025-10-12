@@ -4,7 +4,7 @@ import time
 from typing import Dict, Any, List
 from .config import PROMPT_PHASES, now
 from .scheduler import pick_system_prompt
-from .memory import load_memory, save_memory, update_history, append_fact
+from .memory import load_memory, save_memory, update_history, append_fact, clear_memory
 from .llm import chat
 
 def extract_fact(llm_text: str) -> str | None:
@@ -38,4 +38,16 @@ class Pipeline:
             "turn": self.turn,
             "elapsed_min": self.current_elapsed_min(),
             "memory_path": str(self.memory_path if hasattr(self, "memory_path") else "data/prompt_memory.json")
+        }
+
+    def reset(self):
+        """Reinicia completamente la sesión y limpia la memoria"""
+        self.session_start = now()
+        self.turn = 0
+        self.history = []
+        self.memory = clear_memory()
+        return {
+            "message": "Sesión reiniciada",
+            "turn": self.turn,
+            "elapsed_min": 0.0
         }

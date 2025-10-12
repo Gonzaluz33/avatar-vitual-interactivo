@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react'
+import { ttsService } from '../services/ttsService'
 
 const AppContext = createContext(null)
 
@@ -16,6 +17,8 @@ export const AppProvider = ({ children }) => {
   const [isProcessing, setIsProcessing] = useState(false)
   const [wsStatus, setWsStatus] = useState('disconnected') // disconnected, connecting, connected
   const [systemInfo, setSystemInfo] = useState({ turn: 0, elapsed_min: 0 })
+  const [ttsEnabled, setTtsEnabled] = useState(true)
+  const [isSpeaking, setIsSpeaking] = useState(false)
   
   const wsRef = useRef(null)
   const mediaRecorderRef = useRef(null)
@@ -50,17 +53,29 @@ export const AppProvider = ({ children }) => {
           }])
         } else if (data.type === 'response') {
           // Agregar respuesta del asistente
-          setMessages(prev => [...prev, {
+          const assistantMessage = {
             role: 'assistant',
             content: data.text,
             timestamp: new Date().toISOString(),
             systemPrompt: data.system_prompt
-          }])
+          }
+          
+          setMessages(prev => [...prev, assistantMessage])
           setSystemInfo({
             turn: data.turn,
             elapsed_min: data.elapsed_min
           })
           setIsProcessing(false)
+          
+          // Leer la respuesta en voz alta con la voz apropiada
+          if (ttsEnabled) {
+            ttsService.speak(
+              data.text,
+              data.elapsed_min,
+              () => setIsSpeaking(false), // onEnd
+              () => setIsSpeaking(true)   // onStart
+            )
+          }
         } else if (data.type === 'error') {
           console.error('Error del servidor:', data.message)
           setMessages(prev => [...prev, {
@@ -172,9 +187,68 @@ export const AppProvider = ({ children }) => {
   }, [isRecording])
 
   // Limpiar conversación
-  const clearMessages = useCallback(() => {
-    setMessages([])
-    setSystemInfo({ turn: 0, elapsed_min: 0 })
+  const clearMessages = useCallback(async () => {
+    try {
+      // Llamar al backend para reiniciar la sesión y limpiar la memoria
+      const response = await fetch('http://localhost:5175/reset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Sesión reiniciada:', data)
+        
+        // Limpiar estado del frontend
+        setMessages([])
+        setSystemInfo({ turn: 0, elapsed_min: 0 })
+        
+        // Mensaje de confirmación
+        setMessages([{
+          role: 'system',
+          content: '✨ Conversación limpiada. Memoria reiniciada.',
+          timestamp: new Date().toISOString()
+        }])
+        
+        // Limpiar el mensaje del sistema después de 3 segundos
+        setTimeout(() => {
+          setMessages([])
+        }, 3000)
+      }
+    } catch (error) {
+      console.error('Error al limpiar la memoria del backend:', error)
+      setMessages([{
+        role: 'system',
+        content: '⚠️ Error al limpiar la memoria. Intenta de nuevo.',
+        timestamp: new Date().toISOString()
+      }])
+    }
+  }, [])
+
+  // Control de TTS
+  const toggleTTS = useCallback(() => {
+    const newState = !ttsEnabled
+    setTtsEnabled(newState)
+    ttsService.setEnabled(newState)
+    if (!newState) {
+      ttsService.cancel()
+      setIsSpeaking(false)
+    }
+  }, [ttsEnabled])
+
+  const stopSpeaking = useCallback(() => {
+    ttsService.cancel()
+    setIsSpeaking(false)
+  }, [])
+
+  const pauseSpeaking = useCallback(() => {
+    ttsService.pause()
+  }, [])
+
+  const resumeSpeaking = useCallback(() => {
+    ttsService.resume()
   }, [])
 
   const value = {
@@ -183,13 +257,19 @@ export const AppProvider = ({ children }) => {
     isProcessing,
     wsStatus,
     systemInfo,
+    ttsEnabled,
+    isSpeaking,
     connect,
     disconnect,
     sendTextMessage,
     sendAudio,
     startRecording,
     stopRecording,
-    clearMessages
+    clearMessages,
+    toggleTTS,
+    stopSpeaking,
+    pauseSpeaking,
+    resumeSpeaking
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
