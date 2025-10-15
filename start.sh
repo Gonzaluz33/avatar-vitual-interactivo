@@ -2,9 +2,7 @@
 
 # Script para iniciar el backend y frontend simultáneamente
 
-echo "🚀 Iniciando Avatar Virtual Interactivo..."
-
-
+echo " Iniciando Avatar Virtual Interactivo..."
 
 # Iniciar backend
 echo "🔧 Iniciando backend en puerto 5175..."

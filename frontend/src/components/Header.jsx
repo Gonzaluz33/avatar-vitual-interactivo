@@ -22,7 +22,6 @@ const Header = ({ darkMode, setDarkMode }) => {
         </div>
         
         <div className="flex items-center space-x-4">
-          {/* Estado de conexión */}
           <div className="flex items-center space-x-2">
             {wsStatus === 'connected' ? (
               <>
@@ -42,7 +41,6 @@ const Header = ({ darkMode, setDarkMode }) => {
             )}
           </div>
           
-          {/* Toggle dark mode */}
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"

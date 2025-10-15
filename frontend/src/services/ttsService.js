@@ -1,20 +1,14 @@
-// Servicio de Text-to-Speech con voces dinámicas
-
-/**
- * Mapeo de rangos de tiempo (minutos) a configuraciones de voz
- * Basado en las fases de PROMPT_PHASES del backend
- */
 const VOICE_PROFILES = [
   {
     minTime: 0,
     maxTime: 10,
     name: 'Facundo (6-8 años)',
     config: {
-      // Voz más aguda y rápida para simular niñez
-      pitch: 1.8,
+      
+      pitch: 1.2,
       rate: 1.1,
       volume: 1.0,
-      voicePattern: ['es-MX', 'es-ES', 'es-AR'], // Preferencia de voces
+      voicePattern: ['es-MX', 'es-ES', 'es-AR'], 
     }
   },
   {
@@ -74,7 +68,6 @@ class TTSService {
     // Cargar voces disponibles
     this.loadVoices()
     
-    // Algunos navegadores cargan las voces de forma asíncrona
     if (this.synth.onvoiceschanged !== undefined) {
       this.synth.onvoiceschanged = () => this.loadVoices()
     }
@@ -86,23 +79,18 @@ class TTSService {
     console.log('Voces disponibles:', this.voices.map(v => `${v.name} (${v.lang})`))
   }
 
-  /**
-   * Selecciona la mejor voz según el tiempo transcurrido
-   */
   selectVoiceByTime(elapsedMin) {
     if (!this.voicesLoaded || this.voices.length === 0) {
       this.loadVoices()
       return null
     }
 
-    // Encontrar el perfil de voz correspondiente
     const profile = VOICE_PROFILES.find(
       p => elapsedMin >= p.minTime && elapsedMin < p.maxTime
     ) || VOICE_PROFILES[0]
 
     console.log(`Seleccionando voz para ${profile.name} (${elapsedMin.toFixed(1)} min)`)
 
-    // Buscar voces en español según el patrón de preferencia
     for (const langPattern of profile.config.voicePattern) {
       const matchingVoice = this.voices.find(voice => 
         voice.lang.startsWith(langPattern) || voice.lang.includes(langPattern)
@@ -112,7 +100,6 @@ class TTSService {
       }
     }
 
-    // Fallback: cualquier voz en español
     const spanishVoice = this.voices.find(voice => 
       voice.lang.startsWith('es')
     )
@@ -122,11 +109,7 @@ class TTSService {
       : null
   }
 
-  /**
-   * Lee un texto en voz alta con la configuración según el tiempo
-   */
   speak(text, elapsedMin = 0, onEnd = null, onStart = null) {
-    // Cancelar cualquier lectura en curso
     this.cancel()
 
     if (!this.isEnabled || !text) {
@@ -150,12 +133,12 @@ class TTSService {
     utterance.lang = voice.lang
 
     utterance.onstart = () => {
-      console.log(`🔊 Reproduciendo con voz: ${profileName} (${voice.name})`)
+      console.log(` Reproduciendo con voz: ${profileName} (${voice.name})`)
       if (onStart) onStart()
     }
 
     utterance.onend = () => {
-      console.log('✅ Reproducción finalizada')
+      console.log(' Reproducción finalizada')
       this.currentUtterance = null
       if (onEnd) onEnd()
     }
@@ -170,9 +153,6 @@ class TTSService {
     this.synth.speak(utterance)
   }
 
-  /**
-   * Cancela la lectura actual
-   */
   cancel() {
     if (this.synth.speaking) {
       this.synth.cancel()
@@ -180,34 +160,22 @@ class TTSService {
     this.currentUtterance = null
   }
 
-  /**
-   * Pausa la lectura
-   */
   pause() {
     if (this.synth.speaking && !this.synth.paused) {
       this.synth.pause()
     }
   }
 
-  /**
-   * Reanuda la lectura
-   */
   resume() {
     if (this.synth.paused) {
       this.synth.resume()
     }
   }
 
-  /**
-   * Verifica si está hablando
-   */
   isSpeaking() {
     return this.synth.speaking
   }
 
-  /**
-   * Habilita/deshabilita TTS
-   */
   setEnabled(enabled) {
     this.isEnabled = enabled
     if (!enabled) {
@@ -229,10 +197,8 @@ class TTSService {
   }
 }
 
-// Exportar instancia singleton
 export const ttsService = new TTSService()
 
-// Hook personalizado para usar TTS en componentes
 export const useTTS = () => {
   return ttsService
 }

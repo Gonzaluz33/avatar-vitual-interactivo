@@ -24,7 +24,6 @@ export const AppProvider = ({ children }) => {
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
 
-  // Conectar al WebSocket
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('Ya conectado al WebSocket')
@@ -45,14 +44,12 @@ export const AppProvider = ({ children }) => {
         console.log('Mensaje recibido:', data)
 
         if (data.type === 'transcript') {
-          // Agregar transcripción del usuario
           setMessages(prev => [...prev, {
             role: 'user',
             content: data.text,
             timestamp: new Date().toISOString()
           }])
         } else if (data.type === 'response') {
-          // Agregar respuesta del asistente
           const assistantMessage = {
             role: 'assistant',
             content: data.text,
@@ -67,13 +64,12 @@ export const AppProvider = ({ children }) => {
           })
           setIsProcessing(false)
           
-          // Leer la respuesta en voz alta con la voz apropiada
           if (ttsEnabled) {
             ttsService.speak(
               data.text,
               data.elapsed_min,
-              () => setIsSpeaking(false), // onEnd
-              () => setIsSpeaking(true)   // onStart
+              () => setIsSpeaking(false),
+              () => setIsSpeaking(true)
             )
           }
         } else if (data.type === 'error') {
@@ -103,7 +99,6 @@ export const AppProvider = ({ children }) => {
     wsRef.current = ws
   }, [])
 
-  // Desconectar WebSocket
   const disconnect = useCallback(() => {
     if (wsRef.current) {
       wsRef.current.close()
@@ -112,7 +107,6 @@ export const AppProvider = ({ children }) => {
     }
   }, [])
 
-  // Enviar mensaje de texto
   const sendTextMessage = useCallback((text) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       console.error('WebSocket no conectado')
@@ -126,7 +120,6 @@ export const AppProvider = ({ children }) => {
     }))
   }, [])
 
-  // Enviar audio
   const sendAudio = useCallback((audioBlob) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       console.error('WebSocket no conectado')
@@ -146,7 +139,6 @@ export const AppProvider = ({ children }) => {
     reader.readAsDataURL(audioBlob)
   }, [])
 
-  // Iniciar grabación de audio
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -163,8 +155,6 @@ export const AppProvider = ({ children }) => {
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
         sendAudio(audioBlob)
-        
-        // Detener el stream
         stream.getTracks().forEach(track => track.stop())
       }
       
@@ -177,7 +167,6 @@ export const AppProvider = ({ children }) => {
     }
   }, [sendAudio])
 
-  // Detener grabación
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop()
@@ -186,10 +175,8 @@ export const AppProvider = ({ children }) => {
     }
   }, [isRecording])
 
-  // Limpiar conversación
   const clearMessages = useCallback(async () => {
     try {
-      // Llamar al backend para reiniciar la sesión y limpiar la memoria
       const response = await fetch('http://localhost:5175/reset', {
         method: 'POST',
         headers: {
@@ -201,18 +188,15 @@ export const AppProvider = ({ children }) => {
         const data = await response.json()
         console.log('Sesión reiniciada:', data)
         
-        // Limpiar estado del frontend
         setMessages([])
         setSystemInfo({ turn: 0, elapsed_min: 0 })
         
-        // Mensaje de confirmación
         setMessages([{
           role: 'system',
           content: '✨ Conversación limpiada. Memoria reiniciada.',
           timestamp: new Date().toISOString()
         }])
         
-        // Limpiar el mensaje del sistema después de 3 segundos
         setTimeout(() => {
           setMessages([])
         }, 3000)
@@ -227,7 +211,6 @@ export const AppProvider = ({ children }) => {
     }
   }, [])
 
-  // Control de TTS
   const toggleTTS = useCallback(() => {
     const newState = !ttsEnabled
     setTtsEnabled(newState)

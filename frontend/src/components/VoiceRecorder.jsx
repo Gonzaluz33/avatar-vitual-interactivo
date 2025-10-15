@@ -20,7 +20,6 @@ const VoiceRecorder = () => {
         Control de Voz
       </h3>
 
-      {/* Visualizador de audio */}
       <div className="flex items-center justify-center h-32 mb-6 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-700 dark:to-gray-600 rounded-lg">
         {isRecording ? (
           <div className="flex items-center space-x-2">
@@ -45,7 +44,6 @@ const VoiceRecorder = () => {
         )}
       </div>
 
-      {/* Botón de grabación */}
       <button
         onClick={handleRecording}
         disabled={isDisabled}
@@ -70,7 +68,6 @@ const VoiceRecorder = () => {
         </div>
       </button>
 
-      {/* Indicaciones */}
       <div className="mt-4 space-y-2">
         <p className="text-xs text-gray-600 dark:text-gray-400">
           💡 <strong>Tip:</strong> Habla claramente y espera a que termine de procesar antes de enviar otro mensaje.

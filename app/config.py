@@ -4,25 +4,23 @@ import os, time
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Cargar .env si existe
 load_dotenv()
 
-# --- LLM ---
+# LLM Configuration
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-latest")
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "anthropic").lower()  # anthropic | ollama
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "anthropic").lower() 
 
-# --- Memory ---
+# Memory
 MEMORY_PATH = Path(os.getenv("MEMORY_PATH", "data/prompt_memory.json"))
 
-# --- Audio ---
-SAMPLE_RATE = 16000  # Hz
+# Audio
+SAMPLE_RATE = 16000
 CHANNELS = 1
 
-# --- Prompt scheduling ---
-# min_desde_inicio : prompt
+# Prompt phases by elapsed time (minutes)
 PROMPT_PHASES = [
-    (0,  """PERSONA: Soy Facundo, tengo 6–8 años. Hablo en español neutro. No soy experto en nada; aprendo preguntando.
+    (0,  """PERSONA: Soy Facundo, tengo 6 años. Hablo en español neutro. No soy experto en nada; aprendo preguntando.
 
 OBJETIVO COMUNICATIVO:
 - Expresarme con curiosidad y asombro.

@@ -1,6 +1,6 @@
-# 📋 Resumen del Proyecto - Avatar Virtual Interactivo
+# Resumen del Proyecto - Avatar Virtual Interactivo
 
-## 🎯 Descripción General
+## Descripción General
 
 Sistema completo de conversación por voz en tiempo real que integra:
 - **Frontend**: React + Vite + Tailwind CSS
@@ -8,7 +8,7 @@ Sistema completo de conversación por voz en tiempo real que integra:
 - **ASR**: Whisper (faster-whisper) para transcripción de voz
 - **LLM**: Claude API (Anthropic) con fallback a Ollama
 
-## 🏗️ Arquitectura
+## Arquitectura
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -48,7 +48,7 @@ Sistema completo de conversación por voz en tiempo real que integra:
            └───────────────┘
 ```
 
-## 📁 Estructura de Archivos
+## Estructura de Archivos
 
 ### Backend (`/app`)
 
@@ -78,7 +78,7 @@ Sistema completo de conversación por voz en tiempo real que integra:
 | `VoiceRecorder.jsx` | Grabación de audio, visualizador |
 | `StatusBar.jsx` | Información de sesión |
 
-## 🔄 Flujo de Datos
+## Flujo de Datos
 
 ### Conversación por Voz
 
@@ -117,7 +117,7 @@ Sistema completo de conversación por voz en tiempo real que integra:
 3. **VoiceRecorder**: Botón de grabación, visualizador, instrucciones
 4. **StatusBar**: Turnos conversacionales, tiempo transcurrido
 
-## 🔌 API Reference
+## API Reference
 
 ### WebSocket: `/ws/voice`
 
@@ -158,7 +158,7 @@ POST /chat          # Solo LLM (texto)
 POST /run           # Pipeline completo
 ```
 
-## 🎯 Funcionalidades Implementadas
+## Funcionalidades Implementadas
 
 ### Core
 - ✅ Grabación de audio en tiempo real
@@ -186,7 +186,7 @@ POST /run           # Pipeline completo
 - ✅ Variables de entorno
 - ✅ Estructura modular
 
-## 🚀 Próximas Mejoras (Sugerencias)
+## Próximas Mejoras (Sugerencias)
 
 ### Corto Plazo
 - [ ] Soporte para múltiples idiomas en la UI
@@ -206,7 +206,7 @@ POST /run           # Pipeline completo
 - [ ] App móvil (React Native)
 - [ ] Dashboard de analytics
 
-## 📊 Tecnologías Utilizadas
+## Tecnologías Utilizadas
 
 ### Backend
 - **FastAPI**: Framework web moderno y rápido
@@ -224,19 +224,14 @@ POST /run           # Pipeline completo
 - **Context API**: Manejo de estado global
 - **WebSocket API**: Comunicación en tiempo real
 
-## 🔒 Seguridad
+## Seguridad
 
 - ✅ CORS configurado para dominios específicos
 - ✅ API keys en variables de entorno
 - ✅ Validación de tipos con Pydantic
 - ✅ Manejo seguro de archivos temporales
-- ⚠️ **Nota**: Para producción, agregar:
-  - Autenticación JWT
-  - Rate limiting
-  - HTTPS obligatorio
-  - Sanitización adicional de inputs
 
-## 📈 Rendimiento
+## Rendimiento
 
 ### Backend
 - **Whisper**: ~2-5s en CPU (model: small)
@@ -248,7 +243,7 @@ POST /run           # Pipeline completo
 - **Render**: 60 FPS
 - **Bundle size**: ~200KB (gzipped)
 
-## 🧪 Testing
+## Testing
 
 ### Recomendaciones para testing:
 
@@ -261,7 +256,7 @@ cd frontend
 npm run test  # (configurar jest/vitest)
 ```
 
-## 📝 Notas Importantes
+## Notas Importantes
 
 1. **Micrófono**: Requiere HTTPS en producción (excepto localhost)
 2. **API Keys**: No commitear .env con keys reales
@@ -269,7 +264,7 @@ npm run test  # (configurar jest/vitest)
 4. **Whisper**: Primera ejecución descarga el modelo (~140MB)
 5. **WebSocket**: Manejar reconexiones automáticas en producción
 
-## 🤝 Contribuciones
+## Contribuciones
 
 El proyecto está estructurado de forma modular para facilitar contribuciones:
 - Backend: Agregar nuevos providers en `app/llm.py`
@@ -278,4 +273,3 @@ El proyecto está estructurado de forma modular para facilitar contribuciones:
 
 ---
 
-**Proyecto completado y listo para usar** 🎉

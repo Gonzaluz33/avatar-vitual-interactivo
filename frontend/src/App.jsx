@@ -11,7 +11,6 @@ function App() {
   const [darkMode, setDarkMode] = useState(true)
 
   useEffect(() => {
-    // Conectar al WebSocket al iniciar
     connect()
   }, [connect])
 
@@ -29,12 +28,10 @@ function App() {
         <Header darkMode={darkMode} setDarkMode={setDarkMode} />
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-          {/* Panel principal - Chat */}
           <div className="lg:col-span-2">
             <ChatInterface />
           </div>
           
-          {/* Panel lateral - Controles de voz */}
           <div className="lg:col-span-1">
             <VoiceRecorder />
             <TTSControls />

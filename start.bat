@@ -3,22 +3,6 @@ REM Script para iniciar el backend y frontend en Windows
 
 echo Iniciando Avatar Virtual Interactivo...
 
-REM Verificar que el entorno virtual existe
-if not exist ".venv" (
-    echo Error: No se encuentra el entorno virtual .venv
-    echo Por favor ejecuta: python -m venv .venv
-    echo Luego: .venv\Scripts\activate
-    echo Y finalmente: pip install -r requirements.txt
-    exit /b 1
-)
-
-REM Verificar que node_modules existe en frontend
-if not exist "frontend\node_modules" (
-    echo Instalando dependencias del frontend...
-    cd frontend
-    call npm install
-    cd ..
-)
 
 REM Iniciar backend en una nueva ventana
 echo Iniciando backend en puerto 5175...

@@ -11,7 +11,6 @@ from .pipeline import Pipeline
 
 app = FastAPI(title="Local ASR + LLM API")
 
-# Configurar CORS para permitir peticiones desde el frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:3000", "http://localhost:5174"],
@@ -20,10 +19,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Instancia del pipeline (una por sesión de servidor)
 pipeline = Pipeline()
 
-# Modelos Pydantic para request/response
 class ChatRequest(BaseModel):
     text: str
     history: List[Dict[str, str]] = []
@@ -34,7 +31,6 @@ class ChatResponse(BaseModel):
     turn: int
     elapsed_min: float
 
-# Endpoints HTTP existentes
 @app.get("/")
 async def root():
     return {"message": "Avatar Virtual Interactivo API", "status": "running"}
@@ -45,13 +41,11 @@ async def health():
 
 @app.post("/reset")
 async def reset():
-    """Reinicia la sesión y limpia toda la memoria"""
     result = pipeline.reset()
     return JSONResponse(result)
 
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...)):
-    """Transcribe un archivo de audio a texto"""
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[-1]) as tmp:
         tmp.write(await file.read())
         tmp_path = tmp.name
@@ -61,7 +55,6 @@ async def transcribe(file: UploadFile = File(...)):
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
-    """Chat con el LLM usando texto"""
     out = pipeline.run(request.text)
     return ChatResponse(
         response=out["response"],
@@ -72,7 +65,6 @@ async def chat_endpoint(request: ChatRequest):
 
 @app.post("/run")
 async def run(file: UploadFile = File(...)):
-    """Pipeline completo: transcribe audio -> LLM -> respuesta"""
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[-1]) as tmp:
         tmp.write(await file.read())
         tmp_path = tmp.name
@@ -82,7 +74,6 @@ async def run(file: UploadFile = File(...)):
     out["transcript"] = asr["text"]
     return JSONResponse(out)
 
-# WebSocket para comunicación en tiempo real
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -105,37 +96,29 @@ manager = ConnectionManager()
 
 @app.websocket("/ws/voice")
 async def websocket_voice_endpoint(websocket: WebSocket):
-    """WebSocket para streaming de audio en tiempo real"""
     await manager.connect(websocket)
     try:
         while True:
-            # Recibir data del cliente
             data = await websocket.receive_json()
             
             if data.get("type") == "audio":
-                # Audio en base64
                 audio_b64 = data.get("audio")
                 
-                # Guardar temporalmente y procesar
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
                     tmp.write(base64.b64decode(audio_b64))
                     tmp_path = tmp.name
                 
-                # Transcribir
                 try:
                     asr = transcribe_file(tmp_path, language="es")
                     transcript = asr["text"]
                     
-                    # Enviar transcripción
                     await manager.send_personal_message({
                         "type": "transcript",
                         "text": transcript
                     }, websocket)
                     
-                    # Procesar con LLM
                     out = pipeline.run(transcript)
                     
-                    # Enviar respuesta
                     await manager.send_personal_message({
                         "type": "response",
                         "text": out["response"],
@@ -153,7 +136,6 @@ async def websocket_voice_endpoint(websocket: WebSocket):
                     os.unlink(tmp_path)
             
             elif data.get("type") == "text":
-                # Chat de texto directo
                 text = data.get("text")
                 try:
                     out = pipeline.run(text)
@@ -175,4 +157,3 @@ async def websocket_voice_endpoint(websocket: WebSocket):
                 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-        print("Cliente desconectado")

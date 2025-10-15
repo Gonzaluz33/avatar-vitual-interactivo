@@ -1,9 +1,4 @@
 {
   "facts": [],
-  "history": [
-    {
-      "user": "Hola, ¿cómo estás?",
-      "assistant": "¡Hola! Estoy bien, gracias. Me gusta conocer gente nueva. ¿Vos cómo estás? ¿Querés charlar de algo divertido?"
-    }
-  ]
+  "history": []
 }

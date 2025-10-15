@@ -8,7 +8,6 @@ from .memory import load_memory, save_memory, update_history, append_fact, clear
 from .llm import chat
 
 def extract_fact(llm_text: str) -> str | None:
-    # Implementación mínima: heurística (opcionalmente podrías llamar al LLM para extraer un hecho)
     return None
 
 class Pipeline:
@@ -24,7 +23,6 @@ class Pipeline:
     def run(self, user_text: str, provider: str | None = None) -> Dict[str, Any]:
         system_prompt = pick_system_prompt(self.current_elapsed_min(), self.turn, PROMPT_PHASES)
         response = chat(system_prompt, user_text, history=self.history, provider=provider)
-        # update state
         self.history.extend([{"role": "user", "content": user_text}, {"role": "assistant", "content": response}])
         self.memory = update_history(self.memory, user_text, response)
         fact = extract_fact(user_text)
@@ -41,7 +39,6 @@ class Pipeline:
         }
 
     def reset(self):
-        """Reinicia completamente la sesión y limpia la memoria"""
         self.session_start = now()
         self.turn = 0
         self.history = []

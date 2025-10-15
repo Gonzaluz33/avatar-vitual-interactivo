@@ -11,7 +11,6 @@ const TTSControls = () => {
       </h3>
       
       <div className="space-y-3">
-        {/* Toggle TTS On/Off */}
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600 dark:text-gray-400">
             Lectura de voz
@@ -38,7 +37,6 @@ const TTSControls = () => {
           </button>
         </div>
 
-        {/* Controles de reproducción (solo visibles si está hablando) */}
         {isSpeaking && ttsEnabled && (
           <div className="flex items-center space-x-2 pt-2 border-t border-gray-200 dark:border-gray-700">
             <button
@@ -51,7 +49,6 @@ const TTSControls = () => {
           </div>
         )}
 
-        {/* Indicador de voz activa */}
         {isSpeaking && (
           <div className="flex items-center space-x-2 text-xs text-green-600 dark:text-green-400">
             <div className="flex space-x-1">
@@ -64,7 +61,6 @@ const TTSControls = () => {
         )}
       </div>
 
-      {/* Información sobre las voces */}
       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
         <p className="text-xs text-gray-500 dark:text-gray-400">
           💡 <strong>Tip:</strong> La voz cambia automáticamente según el tiempo de conversación:

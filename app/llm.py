@@ -7,7 +7,6 @@ from .config import (
     ANTHROPIC_API_KEY, CLAUDE_MODEL, LLM_PROVIDER
 )
 
-# --- Anthropic (Claude) ---
 def _anthropic_chat(messages: List[Dict[str, str]], model: str = CLAUDE_MODEL, max_tokens: int = 512, temperature: float = 0.7) -> str:
     try:
         import anthropic
@@ -17,7 +16,6 @@ def _anthropic_chat(messages: List[Dict[str, str]], model: str = CLAUDE_MODEL, m
     if not (ANTHROPIC_API_KEY or os.getenv("ANTHROPIC_API_KEY")):
         raise RuntimeError("Falta ANTHROPIC_API_KEY en entorno (.env)")
 
-    # 1) separar el/los system de los mensajes user/assistant
     system_parts = [m.get("content", "") for m in messages if m.get("role") == "system" and m.get("content")]
     system = "\n\n".join(system_parts) if system_parts else None
 
@@ -35,15 +33,13 @@ def _anthropic_chat(messages: List[Dict[str, str]], model: str = CLAUDE_MODEL, m
         messages=msg_payload,
     )
     if system:
-        kwargs["system"] = system  # <- AQUÍ va el system prompt
+        kwargs["system"] = system
 
     resp = client.messages.create(**kwargs)
 
-    # extraer texto
     blocks = getattr(resp, "content", []) or []
     out = []
     for b in blocks:
-        # SDK nuevo: objetos con atributo .type / .text
         if getattr(b, "type", "") == "text":
             out.append(b.text)
         elif isinstance(b, dict) and b.get("type") == "text":
@@ -51,7 +47,6 @@ def _anthropic_chat(messages: List[Dict[str, str]], model: str = CLAUDE_MODEL, m
     return "".join(out).strip()
 
 
-# --- Ollama (opcional) ---
 def _ollama_chat(messages: List[Dict[str, str]], model: str = "qwen2.5:0.5b", stream: bool = False) -> str:
     try:
         import ollama
@@ -78,10 +73,8 @@ def chat(system_prompt: str, user_text: str, history: List[Dict[str, str]] | Non
     msgs.append({"role": "user", "content": user_text})
 
     if provider == "anthropic":
-        # Anthropic requiere formato messages con roles user/assistant; 'system' se maneja como primer mensaje system.
         return _anthropic_chat(messages=msgs)
     elif provider == "ollama":
-        # Ollama usa el mismo estilo de mensajes
         return _ollama_chat(messages=msgs)
     else:
         raise ValueError(f"Proveedor no soportado: {provider}")
