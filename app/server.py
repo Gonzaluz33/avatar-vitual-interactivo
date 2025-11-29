@@ -1,15 +1,52 @@
 
 from __future__ import annotations
-from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import tempfile, os, json, base64
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from .asr import transcribe_file
 from .pipeline import Pipeline
 
-app = FastAPI(title="Local ASR + LLM API")
+# Importación condicional de AIAvatarKit
+AIAVATAR_ENABLED = os.getenv("AIAVATAR_ENABLED", "false").lower() == "true"
+aiavatar_http_server = None
+aiavatar_ws_server = None
+
+if AIAVATAR_ENABLED:
+    try:
+        from .aiavatar_integration import (
+            create_aiavatar_http_server,
+            create_aiavatar_websocket_server,
+            setup_face_expressions,
+            setup_callbacks,
+        )
+        from .config import AIAVATAR_LLM_PROVIDER
+        
+        # Crear servidor HTTP de AIAvatarKit (usa el proveedor configurado, por defecto Gemini)
+        aiavatar_http_server = create_aiavatar_http_server(
+            llm_provider=AIAVATAR_LLM_PROVIDER,
+            use_custom_system_prompt=True,
+            debug=True,
+        )
+        
+        # Crear servidor WebSocket de AIAvatarKit
+        aiavatar_ws_server = create_aiavatar_websocket_server(
+            llm_provider=AIAVATAR_LLM_PROVIDER,
+            use_custom_system_prompt=True,
+            debug=True,
+        )
+        
+        print(f"✅ AIAvatarKit habilitado con proveedor: {AIAVATAR_LLM_PROVIDER}")
+    except ImportError as e:
+        print(f"⚠️ AIAvatarKit no disponible: {e}")
+        AIAVATAR_ENABLED = False
+    except Exception as e:
+        print(f"⚠️ Error al configurar AIAvatarKit: {e}")
+        AIAVATAR_ENABLED = False
+
+app = FastAPI(title="Avatar Virtual Interactivo API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -157,3 +194,31 @@ async def websocket_voice_endpoint(websocket: WebSocket):
                 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+
+# ============================================================================
+# AIAvatarKit Integration Routes
+# ============================================================================
+
+@app.get("/aiavatar/status")
+async def aiavatar_status():
+    """Verifica el estado de AIAvatarKit"""
+    return {
+        "enabled": AIAVATAR_ENABLED,
+        "http_server": aiavatar_http_server is not None,
+        "websocket_server": aiavatar_ws_server is not None,
+    }
+
+
+# Incluir routers de AIAvatarKit si está habilitado
+if AIAVATAR_ENABLED and aiavatar_http_server:
+    # Router HTTP para chat con streaming (SSE)
+    aiavatar_router = aiavatar_http_server.get_api_router()
+    app.include_router(aiavatar_router, prefix="/aiavatar", tags=["AIAvatarKit"])
+    print("📡 AIAvatarKit HTTP router incluido en /aiavatar")
+
+if AIAVATAR_ENABLED and aiavatar_ws_server:
+    # Router WebSocket para comunicación en tiempo real
+    aiavatar_ws_router = aiavatar_ws_server.get_websocket_router()
+    app.include_router(aiavatar_ws_router, prefix="/aiavatar", tags=["AIAvatarKit WebSocket"])
+    print("🔌 AIAvatarKit WebSocket router incluido en /aiavatar/ws")

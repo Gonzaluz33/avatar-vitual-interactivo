@@ -3,7 +3,9 @@
 
 Sistema de conversación por voz en tiempo real con **FastAPI** (backend) y **React** (frontend). 
 
-Pipeline local para **transcribir audio con Whisper** y **consultar un LLM** (Anthropic Claude vía API; fallback opcional Ollama). 
+Pipeline local para **transcribir audio con Whisper** y **consultar un LLM** (Anthropic Claude vía API; fallback opcional Ollama).
+
+🆕 **Ahora con integración de [AIAvatarKit](https://github.com/uezo/aiavatarkit)** para capacidades avanzadas de Speech-to-Speech.
 
 ## ✨ Características
 
@@ -15,6 +17,14 @@ Pipeline local para **transcribir audio con Whisper** y **consultar un LLM** (An
 - 🌓 **Dark mode** integrado
 - 📊 **System prompt adaptativo** según tiempo y turnos de conversación
 - 💾 **Memoria persistente** de la conversación
+
+### 🆕 Con AIAvatarKit
+
+- 🗣️ **Speech-to-Speech**: Conversación completa por voz
+- 🔊 **TTS avanzado**: VOICEVOX, OpenAI, Azure
+- 😊 **Expresiones faciales**: Control de emociones del avatar
+- ⚡ **Streaming**: Respuestas en tiempo real vía SSE/WebSocket
+- 🧩 **Tool Calls**: Integración de herramientas/APIs externas
 
 ## 📋 Requisitos
 
@@ -57,10 +67,16 @@ npm install
 Crea `.env` en la raíz del proyecto (copiá de `.env.example`):
 
 ```env
+# LLM Principal
 ANTHROPIC_API_KEY=sk-ant-...
 CLAUDE_MODEL=claude-sonnet-4-5-20250929
 LLM_PROVIDER=anthropic
 MEMORY_PATH=data/prompt_memory.json
+
+# AIAvatarKit (opcional)
+OPENAI_API_KEY=sk-...
+AIAVATAR_ENABLED=true
+VOICEVOX_BASE_URL=http://127.0.0.1:50021
 ```
 
 > Ver modelos disponibles en la [documentación oficial de Anthropic](https://docs.anthropic.com/claude/docs/models-overview).
@@ -85,7 +101,22 @@ npm run dev
 
 Abre tu navegador en: **http://localhost:5173**
 
-### Opción 2: Script de inicio rápido (macOS/Linux)
+### Opción 2: Con AIAvatarKit (Speech-to-Speech)
+
+```bash
+# Servidor integrado con AIAvatarKit
+python run_aiavatar.py --mode server
+
+# O modo conversación local (sin servidor)
+python run_aiavatar.py --mode local
+
+# Con Claude como LLM
+python run_aiavatar.py --mode server --provider claude
+```
+
+📖 Ver [docs/AIAVATAR_INTEGRATION.md](docs/AIAVATAR_INTEGRATION.md) para más detalles.
+
+### Opción 3: Script de inicio rápido (macOS/Linux)
 
 Crea un archivo `start.sh` en la raíz:
 

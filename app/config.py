@@ -9,7 +9,34 @@ load_dotenv()
 # LLM Configuration
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-latest")
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "anthropic").lower() 
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "anthropic").lower()
+
+# OpenAI Configuration (para AIAvatarKit STT y LLM alternativo)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+
+# Gemini Configuration (para AIAvatarKit LLM y STT alternativo)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+
+# VOICEVOX Configuration (para AIAvatarKit TTS)
+VOICEVOX_BASE_URL = os.getenv("VOICEVOX_BASE_URL", "http://127.0.0.1:50021")
+VOICEVOX_SPEAKER = os.getenv("VOICEVOX_SPEAKER", "1")
+
+# AIAvatarKit Configuration
+AIAVATAR_DEBUG = os.getenv("AIAVATAR_DEBUG", "true").lower() == "true"
+AIAVATAR_LANGUAGE = os.getenv("AIAVATAR_LANGUAGE", "es-ES")
+AIAVATAR_WAKEWORDS = os.getenv("AIAVATAR_WAKEWORDS", "Hola,Buenos días,Buenas tardes").split(",") if os.getenv("AIAVATAR_WAKEWORDS") else None
+AIAVATAR_VOLUME_THRESHOLD = float(os.getenv("AIAVATAR_VOLUME_THRESHOLD", "-30.0"))
+AIAVATAR_LLM_PROVIDER = os.getenv("AIAVATAR_LLM_PROVIDER", "gemini").lower()  # gemini, claude, openai
+
+# AIAvatarKit System Prompt (usado cuando se habilita AIAvatarKit)
+AIAVATAR_SYSTEM_PROMPT = os.getenv("AIAVATAR_SYSTEM_PROMPT", """Eres Facundo, un asistente virtual amigable que habla español.
+Eres curioso, amable y te gusta ayudar. 
+Respondes de forma clara y concisa.
+Si no sabes algo, lo admites con honestidad.
+Puedes expresar emociones usando tags como [face:joy] al inicio de tus respuestas.
+""")
 
 # Memory
 MEMORY_PATH = Path(os.getenv("MEMORY_PATH", "data/prompt_memory.json"))
