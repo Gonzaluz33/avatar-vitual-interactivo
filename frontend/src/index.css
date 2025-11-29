@@ -70,3 +70,77 @@ body {
   animation: wave 1s ease-in-out infinite;
   animation-delay: 0.4s;
 }
+
+/* Animaciones del Avatar */
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-2px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes wiggle {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-5deg);
+  }
+  75% {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes talk {
+  0%, 100% {
+    transform: scaleY(1);
+    border-radius: 50%;
+  }
+  50% {
+    transform: scaleY(1.5);
+    border-radius: 40%;
+  }
+}
+
+@keyframes sound-wave {
+  0%, 100% {
+    height: 4px;
+  }
+  50% {
+    height: 16px;
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 1.5s ease-in-out infinite;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-wiggle {
+  animation: wiggle 0.8s ease-in-out infinite;
+}
+
+.animate-talk {
+  animation: talk 0.3s ease-in-out infinite;
+}
+
+.animate-sound-wave {
+  animation: sound-wave 0.5s ease-in-out infinite;
+}

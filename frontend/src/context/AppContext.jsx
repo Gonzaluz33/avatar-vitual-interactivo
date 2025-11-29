@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react'
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import { ttsService } from '../services/ttsService'
+import { aiAvatarService } from '../services/aiAvatarService'
 
 const AppContext = createContext(null)
 
@@ -20,9 +21,135 @@ export const AppProvider = ({ children }) => {
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [isSpeaking, setIsSpeaking] = useState(false)
   
+  // Estado del avatar AIAvatarKit
+  const [avatarExpression, setAvatarExpression] = useState('neutral')
+  const [avatarAnimation, setAvatarAnimation] = useState(null)
+  const [aiAvatarEnabled, setAiAvatarEnabled] = useState(false)
+  const [useAiAvatar, setUseAiAvatar] = useState(true) // Preferir AIAvatarKit si está disponible
+  
   const wsRef = useRef(null)
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
+
+  // Verificar si AIAvatarKit está disponible al montar
+  useEffect(() => {
+    const checkAiAvatar = async () => {
+      try {
+        const status = await aiAvatarService.checkStatus()
+        setAiAvatarEnabled(status.enabled)
+        console.log('AIAvatarKit status:', status)
+        
+        if (status.enabled) {
+          // Configurar callbacks de AIAvatarKit
+          aiAvatarService.setCallbacks({
+            onChunk: handleAiAvatarChunk,
+            onFinal: handleAiAvatarFinal,
+            onAvatarControl: handleAvatarControl,
+            onAudio: handleAiAvatarAudio,
+            onError: handleAiAvatarError
+          })
+        }
+      } catch (error) {
+        console.log('AIAvatarKit not available:', error)
+        setAiAvatarEnabled(false)
+      }
+    }
+    checkAiAvatar()
+  }, [])
+
+  // Callbacks de AIAvatarKit
+  const handleAvatarControl = useCallback((control) => {
+    if (control.face_name) {
+      setAvatarExpression(control.face_name)
+      
+      // Resetear expresión después del tiempo especificado
+      if (control.face_duration) {
+        setTimeout(() => {
+          setAvatarExpression('neutral')
+        }, control.face_duration * 1000)
+      }
+    }
+    
+    if (control.animation_name) {
+      setAvatarAnimation(control.animation_name)
+      
+      if (control.animation_duration) {
+        setTimeout(() => {
+          setAvatarAnimation(null)
+        }, control.animation_duration * 1000)
+      }
+    }
+  }, [])
+
+  const handleAiAvatarChunk = useCallback((data) => {
+    // Actualizar mensajes en streaming
+    console.log('AIAvatar chunk:', data)
+  }, [])
+
+  const handleAiAvatarFinal = useCallback((data) => {
+    console.log('AIAvatar final:', data)
+    
+    // Agregar mensaje del asistente
+    const assistantMessage = {
+      role: 'assistant',
+      content: data.text,
+      timestamp: new Date().toISOString(),
+      avatarControl: data.avatarControl
+    }
+    
+    setMessages(prev => [...prev, assistantMessage])
+    setIsProcessing(false)
+    
+    // TTS si está habilitado
+    if (ttsEnabled && data.text) {
+      ttsService.speak(
+        data.text,
+        0,
+        () => setIsSpeaking(false),
+        () => setIsSpeaking(true)
+      )
+    }
+  }, [ttsEnabled])
+
+  const handleAiAvatarAudio = useCallback((audioBase64) => {
+    // Reproducir audio del servidor (si VOICEVOX está configurado)
+    if (audioBase64) {
+      try {
+        const audioBlob = base64ToBlob(audioBase64, 'audio/wav')
+        const audioUrl = URL.createObjectURL(audioBlob)
+        const audio = new Audio(audioUrl)
+        setIsSpeaking(true)
+        audio.onended = () => {
+          setIsSpeaking(false)
+          URL.revokeObjectURL(audioUrl)
+        }
+        audio.play()
+      } catch (error) {
+        console.error('Error playing audio:', error)
+      }
+    }
+  }, [])
+
+  const handleAiAvatarError = useCallback((error) => {
+    console.error('AIAvatar error:', error)
+    setMessages(prev => [...prev, {
+      role: 'system',
+      content: `Error AIAvatar: ${error.message}`,
+      timestamp: new Date().toISOString()
+    }])
+    setIsProcessing(false)
+  }, [])
+
+  // Helper para convertir base64 a Blob
+  const base64ToBlob = (base64, mimeType) => {
+    const byteCharacters = atob(base64)
+    const byteNumbers = new Array(byteCharacters.length)
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i)
+    }
+    const byteArray = new Uint8Array(byteNumbers)
+    return new Blob([byteArray], { type: mimeType })
+  }
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -107,13 +234,43 @@ export const AppProvider = ({ children }) => {
     }
   }, [])
 
-  const sendTextMessage = useCallback((text) => {
+  const sendTextMessage = useCallback(async (text) => {
+    // Agregar mensaje del usuario
+    setMessages(prev => [...prev, {
+      role: 'user',
+      content: text,
+      timestamp: new Date().toISOString()
+    }])
+    
+    setIsProcessing(true)
+    setAvatarExpression('thinking') // Mostrar expresión de "pensando"
+
+    // Usar AIAvatarKit si está habilitado y preferido
+    if (aiAvatarEnabled && useAiAvatar) {
+      try {
+        const result = await aiAvatarService.chat(text)
+        // El resultado se maneja en los callbacks
+        if (!result.success && !result.cancelled) {
+          console.error('AIAvatar chat failed, falling back to WebSocket')
+          // Fallback a WebSocket
+          sendTextViaWebSocket(text)
+        }
+      } catch (error) {
+        console.error('AIAvatar error, falling back:', error)
+        sendTextViaWebSocket(text)
+      }
+    } else {
+      sendTextViaWebSocket(text)
+    }
+  }, [aiAvatarEnabled, useAiAvatar])
+
+  const sendTextViaWebSocket = useCallback((text) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       console.error('WebSocket no conectado')
+      setIsProcessing(false)
       return
     }
 
-    setIsProcessing(true)
     wsRef.current.send(JSON.stringify({
       type: 'text',
       text: text
@@ -242,6 +399,12 @@ export const AppProvider = ({ children }) => {
     systemInfo,
     ttsEnabled,
     isSpeaking,
+    // Estados del avatar AIAvatarKit
+    avatarExpression,
+    avatarAnimation,
+    aiAvatarEnabled,
+    useAiAvatar,
+    // Funciones
     connect,
     disconnect,
     sendTextMessage,
@@ -252,7 +415,10 @@ export const AppProvider = ({ children }) => {
     toggleTTS,
     stopSpeaking,
     pauseSpeaking,
-    resumeSpeaking
+    resumeSpeaking,
+    // Control del avatar
+    setAvatarExpression,
+    setUseAiAvatar
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

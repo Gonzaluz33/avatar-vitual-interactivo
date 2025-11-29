@@ -5,6 +5,7 @@ import ChatInterface from './components/ChatInterface'
 import VoiceRecorder from './components/VoiceRecorder'
 import StatusBar from './components/StatusBar'
 import TTSControls from './components/TTSControls'
+import Avatar from './components/Avatar'
 
 function App() {
   const { wsStatus, connect } = useApp()
@@ -32,7 +33,8 @@ function App() {
             <ChatInterface />
           </div>
           
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
+            <Avatar />
             <VoiceRecorder />
             <TTSControls />
             <StatusBar />
