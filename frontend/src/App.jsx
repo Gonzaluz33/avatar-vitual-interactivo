@@ -106,15 +106,7 @@ function App() {
       </div>
 
       {/* Subtítulo de lo que dice el avatar */}
-      {showSubtitle && currentSubtitle && (
-        <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 max-w-2xl px-6">
-          <div className="bg-black/60 backdrop-blur-md rounded-2xl px-6 py-4">
-            <p className="text-white text-center text-lg leading-relaxed">
-              {currentSubtitle}
-            </p>
-          </div>
-        </div>
-      )}
+      
 
       {/* Botón de micrófono y estado */}
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-4">

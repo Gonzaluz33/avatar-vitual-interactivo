@@ -3,8 +3,8 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, useGLTF, Environment } from '@react-three/drei'
 import * as THREE from 'three'
 
-// URL del avatar de Ready Player Me proporcionado
-const AVATAR_URL = 'https://models.readyplayer.me/69346d21347390125d33e7ae.glb?morphTargets=ARKit,Oculus Visemes'
+// URL del avatar de Ready Player Me
+const AVATAR_URL = 'https://models.readyplayer.me/69346d21347390125d33e7ae.glb'
 
 // Componente del modelo de avatar
 function AvatarModel({ isSpeaking, visemeData, onLoaded }) {
@@ -71,32 +71,43 @@ function AvatarModel({ isSpeaking, visemeData, onLoaded }) {
     
     // Animación de lip-sync cuando está hablando
     if (isSpeaking) {
-      speakTimer.current += delta * 8
+      speakTimer.current += delta * 6
       
       const dict = headMesh.current.morphTargetDictionary
+      const teethDict = teethMesh.current?.morphTargetDictionary
       
       // Animación de boca basada en visemas o simulación
       if (visemeData && visemeData.currentViseme) {
-        applyViseme(dict, visemeData.currentViseme, visemeData.intensity || 0.7)
+        applyViseme(dict, teethDict, visemeData.currentViseme, visemeData.intensity || 0.4)
       } else {
-        // Simulación usando Oculus Visemes
-        const visemes = ['viseme_aa', 'viseme_O', 'viseme_E', 'viseme_I', 'viseme_U']
+        // Simulación más sutil usando Oculus Visemes
+        const visemes = ['viseme_aa', 'viseme_O', 'viseme_E']
         const time = speakTimer.current
         
-        // Crear movimiento ondulante entre visemas
+        // Crear movimiento más suave entre visemas
         visemes.forEach((viseme, i) => {
           const idx = dict?.[viseme]
           if (idx !== undefined) {
-            const phase = time + i * 1.2
-            const value = Math.max(0, Math.sin(phase) * 0.5)
+            const phase = time + i * 0.8
+            const value = Math.max(0, Math.sin(phase) * 0.25) // Reducido de 0.5 a 0.25
             headMesh.current.morphTargetInfluences[idx] = value
           }
         })
         
-        // Movimiento de mandíbula
+        // Movimiento de mandíbula más sutil
+        const jawValue = (Math.sin(time * 1.2) * 0.5 + 0.5) * 0.15 // Reducido de 0.35 a 0.15
+        
         const jawIdx = dict?.['jawOpen']
         if (jawIdx !== undefined) {
-          headMesh.current.morphTargetInfluences[jawIdx] = (Math.sin(time * 1.5) * 0.5 + 0.5) * 0.35
+          headMesh.current.morphTargetInfluences[jawIdx] = jawValue
+        }
+        
+        // Mover dientes con la mandíbula
+        if (teethMesh.current && teethDict) {
+          const teethJawIdx = teethDict['jawOpen']
+          if (teethJawIdx !== undefined) {
+            teethMesh.current.morphTargetInfluences[teethJawIdx] = jawValue
+          }
         }
       }
     } else {
@@ -106,8 +117,11 @@ function AvatarModel({ isSpeaking, visemeData, onLoaded }) {
   })
 
   // Aplicar visema específico - Usando Oculus Visemes de Ready Player Me
-  const applyViseme = useCallback((dict, viseme, intensity) => {
+  const applyViseme = useCallback((dict, teethDict, viseme, intensity) => {
     if (!dict || !headMesh.current) return
+    
+    // Reducir intensidad general para movimientos más naturales
+    const reducedIntensity = intensity * 0.5
     
     // Mapeo a Oculus Visemes (viseme_XX)
     const visemeToOculus = {
@@ -135,33 +149,45 @@ function AvatarModel({ isSpeaking, visemeData, onLoaded }) {
       'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U'
     ]
     
-    // Fade out todos los visemas
+    // Fade out todos los visemas más rápido
     allVisemes.forEach(v => {
       const idx = dict[v]
       if (idx !== undefined) {
-        headMesh.current.morphTargetInfluences[idx] *= 0.5
+        headMesh.current.morphTargetInfluences[idx] *= 0.6
       }
     })
     
-    // Aplicar visema actual
+    // Aplicar visema actual con intensidad reducida
     const oculusViseme = visemeToOculus[viseme] || 'viseme_aa'
     const idx = dict[oculusViseme]
     if (idx !== undefined) {
-      headMesh.current.morphTargetInfluences[idx] = intensity
+      headMesh.current.morphTargetInfluences[idx] = reducedIntensity
     }
     
-    // También mover la mandíbula para mayor naturalidad
+    // Mover mandíbula para vocales abiertas (con intensidad reducida)
+    const needsJaw = ['aa', 'oh', 'E', 'DD', 'TH'].includes(viseme)
+    const jawValue = needsJaw ? reducedIntensity * 0.3 : 0
+    
     const jawIdx = dict['jawOpen']
-    if (jawIdx !== undefined && ['aa', 'oh', 'E', 'DD', 'TH'].includes(viseme)) {
-      headMesh.current.morphTargetInfluences[jawIdx] = intensity * 0.4
+    if (jawIdx !== undefined) {
+      headMesh.current.morphTargetInfluences[jawIdx] = jawValue
+    }
+    
+    // Mover dientes con la mandíbula
+    if (teethMesh.current && teethDict) {
+      const teethJawIdx = teethDict['jawOpen']
+      if (teethJawIdx !== undefined) {
+        teethMesh.current.morphTargetInfluences[teethJawIdx] = jawValue
+      }
     }
   }, [])
 
-  // Resetear boca
+  // Resetear boca y dientes
   const resetMouth = useCallback(() => {
     if (!headMesh.current) return
     
     const dict = headMesh.current.morphTargetDictionary
+    const teethDict = teethMesh.current?.morphTargetDictionary
     
     // Resetear Oculus Visemes
     const visemes = [
@@ -173,10 +199,17 @@ function AvatarModel({ isSpeaking, visemeData, onLoaded }) {
     visemes.forEach(viseme => {
       const idx = dict?.[viseme]
       if (idx !== undefined) {
-        // Suavizar hacia 0
-        headMesh.current.morphTargetInfluences[idx] *= 0.8
+        headMesh.current.morphTargetInfluences[idx] *= 0.85
       }
     })
+    
+    // Resetear dientes también
+    if (teethMesh.current && teethDict) {
+      const teethJawIdx = teethDict['jawOpen']
+      if (teethJawIdx !== undefined) {
+        teethMesh.current.morphTargetInfluences[teethJawIdx] *= 0.85
+      }
+    }
   }, [])
 
   return (
