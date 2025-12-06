@@ -5,6 +5,7 @@ import ChatInterface from './components/ChatInterface'
 import VoiceRecorder from './components/VoiceRecorder'
 import StatusBar from './components/StatusBar'
 import TTSControls from './components/TTSControls'
+import AvatarPanel from './components/AvatarPanel'
 
 function App() {
   const { wsStatus, connect } = useApp()
@@ -37,6 +38,10 @@ function App() {
             <TTSControls />
             <StatusBar />
           </div>
+        </div>
+
+        <div className="mt-6">
+          <AvatarPanel />
         </div>
       </div>
     </div>
