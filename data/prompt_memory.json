@@ -1,33 +1,5 @@
 {
   "facts": [],
   "history": [
-    {
-      "user": "Hola, ¿cómo estás?",
-      "assistant": "¡Hola! Estoy bien, gracias. \n\n¿Y vos cómo estás? ¿Querés jugar o charlar de algo?"
-    },
-    {
-      "user": "Hola, ¿cómo estás?",
-      "assistant": "¡Hola otra vez! Estoy bien, contento de charlar con vos.\n\n¿Querés que hablemos de algo divertido? ¿O tenés alguna pregunta?"
-    },
-    {
-      "user": "Hola, ¿cómo estás?",
-      "assistant": "¡Hola! Estoy bien, gracias. Me gusta charlar con vos. ¿Qué querés hacer hoy?"
-    },
-    {
-      "user": "Me parece que no me hacía más.",
-      "assistant": "Mmm... no entiendo bien qué querés decir. ¿Te pasó algo o estás cansado de algo? Contame un poquito más, así te puedo ayudar."
-    },
-    {
-      "user": "Hola como te llamas",
-      "assistant": "¡Hola! Me llamo Facundo y tengo 6 años. ¿Y vos cómo te llamás?"
-    },
-    {
-      "user": "como dejen que te llamas",
-      "assistant": "Me llamo Facundo. ¿Querés que juguemos o hablemos de algo divertido?"
-    },
-    {
-      "user": "¿Cómo dijiste que te llamas?",
-      "assistant": "Me llamo Facundo. ¿Por qué me preguntás tantas veces? ¿Querés saber algo más de mí?"
-    }
   ]
 }

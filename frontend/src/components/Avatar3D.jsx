@@ -71,7 +71,7 @@ function AvatarModel({ isSpeaking, visemeData, onLoaded }) {
     
     // Animación de lip-sync cuando está hablando
     if (isSpeaking) {
-      speakTimer.current += delta * 10
+      speakTimer.current += delta * 8
       
       const dict = headMesh.current.morphTargetDictionary
       
@@ -79,17 +79,24 @@ function AvatarModel({ isSpeaking, visemeData, onLoaded }) {
       if (visemeData && visemeData.currentViseme) {
         applyViseme(dict, visemeData.currentViseme, visemeData.intensity || 0.7)
       } else {
-        // Simulación simple de habla
-        const jawOpenIdx = dict?.['jawOpen']
-        const mouthOpenIdx = dict?.['mouthOpen']
+        // Simulación usando Oculus Visemes
+        const visemes = ['viseme_aa', 'viseme_O', 'viseme_E', 'viseme_I', 'viseme_U']
+        const time = speakTimer.current
         
-        const openAmount = (Math.sin(speakTimer.current) * 0.5 + 0.5) * 0.6
+        // Crear movimiento ondulante entre visemas
+        visemes.forEach((viseme, i) => {
+          const idx = dict?.[viseme]
+          if (idx !== undefined) {
+            const phase = time + i * 1.2
+            const value = Math.max(0, Math.sin(phase) * 0.5)
+            headMesh.current.morphTargetInfluences[idx] = value
+          }
+        })
         
-        if (jawOpenIdx !== undefined) {
-          headMesh.current.morphTargetInfluences[jawOpenIdx] = openAmount
-        }
-        if (mouthOpenIdx !== undefined) {
-          headMesh.current.morphTargetInfluences[mouthOpenIdx] = openAmount * 0.5
+        // Movimiento de mandíbula
+        const jawIdx = dict?.['jawOpen']
+        if (jawIdx !== undefined) {
+          headMesh.current.morphTargetInfluences[jawIdx] = (Math.sin(time * 1.5) * 0.5 + 0.5) * 0.35
         }
       }
     } else {
@@ -98,48 +105,56 @@ function AvatarModel({ isSpeaking, visemeData, onLoaded }) {
     }
   })
 
-  // Aplicar visema específico
+  // Aplicar visema específico - Usando Oculus Visemes de Ready Player Me
   const applyViseme = useCallback((dict, viseme, intensity) => {
-    if (!dict) return
+    if (!dict || !headMesh.current) return
     
-    const visemeToMorphs = {
-      'sil': [],
-      'PP': ['mouthPressLeft', 'mouthPressRight', 'mouthClose'],
-      'FF': ['mouthFunnel'],
-      'TH': ['mouthOpen', 'jawOpen'],
-      'DD': ['mouthOpen', 'jawOpen'],
-      'kk': ['mouthOpen', 'mouthShrugUpper'],
-      'CH': ['mouthFunnel', 'jawOpen'],
-      'SS': ['mouthSmileLeft', 'mouthSmileRight'],
-      'nn': ['mouthClose'],
-      'RR': ['mouthRollLower', 'mouthRollUpper'],
-      'aa': ['jawOpen', 'mouthOpen'],
-      'E': ['mouthSmileLeft', 'mouthSmileRight', 'jawOpen'],
-      'ih': ['mouthSmileLeft', 'mouthSmileRight'],
-      'oh': ['mouthFunnel', 'jawOpen'],
-      'ou': ['mouthPucker', 'mouthFunnel'],
+    // Mapeo a Oculus Visemes (viseme_XX)
+    const visemeToOculus = {
+      'sil': 'viseme_sil',   // Silencio
+      'PP': 'viseme_PP',     // p, b, m
+      'FF': 'viseme_FF',     // f, v
+      'TH': 'viseme_TH',     // th
+      'DD': 'viseme_DD',     // t, d
+      'kk': 'viseme_kk',     // k, g
+      'CH': 'viseme_CH',     // ch, j, sh
+      'SS': 'viseme_SS',     // s, z
+      'nn': 'viseme_nn',     // n, l
+      'RR': 'viseme_RR',     // r
+      'aa': 'viseme_aa',     // a
+      'E': 'viseme_E',       // e
+      'ih': 'viseme_I',      // i
+      'oh': 'viseme_O',      // o
+      'ou': 'viseme_U',      // u
     }
     
-    // Resetear todos los morphs de boca primero (fade out)
-    const allMouthMorphs = ['jawOpen', 'mouthOpen', 'mouthFunnel', 'mouthPucker',
-      'mouthSmileLeft', 'mouthSmileRight', 'mouthPressLeft', 'mouthPressRight',
-      'mouthClose', 'mouthRollLower', 'mouthRollUpper', 'mouthShrugUpper']
+    // Lista de todos los visemas de Oculus
+    const allVisemes = [
+      'viseme_sil', 'viseme_PP', 'viseme_FF', 'viseme_TH', 'viseme_DD',
+      'viseme_kk', 'viseme_CH', 'viseme_SS', 'viseme_nn', 'viseme_RR',
+      'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U'
+    ]
     
-    allMouthMorphs.forEach(morph => {
-      const idx = dict[morph]
+    // Fade out todos los visemas
+    allVisemes.forEach(v => {
+      const idx = dict[v]
       if (idx !== undefined) {
-        headMesh.current.morphTargetInfluences[idx] *= 0.7
+        headMesh.current.morphTargetInfluences[idx] *= 0.5
       }
     })
     
     // Aplicar visema actual
-    const morphs = visemeToMorphs[viseme] || visemeToMorphs['aa']
-    morphs.forEach(morph => {
-      const idx = dict[morph]
-      if (idx !== undefined) {
-        headMesh.current.morphTargetInfluences[idx] = intensity * 0.8
-      }
-    })
+    const oculusViseme = visemeToOculus[viseme] || 'viseme_aa'
+    const idx = dict[oculusViseme]
+    if (idx !== undefined) {
+      headMesh.current.morphTargetInfluences[idx] = intensity
+    }
+    
+    // También mover la mandíbula para mayor naturalidad
+    const jawIdx = dict['jawOpen']
+    if (jawIdx !== undefined && ['aa', 'oh', 'E', 'DD', 'TH'].includes(viseme)) {
+      headMesh.current.morphTargetInfluences[jawIdx] = intensity * 0.4
+    }
   }, [])
 
   // Resetear boca
@@ -147,19 +162,25 @@ function AvatarModel({ isSpeaking, visemeData, onLoaded }) {
     if (!headMesh.current) return
     
     const dict = headMesh.current.morphTargetDictionary
-    const mouthMorphs = ['jawOpen', 'mouthOpen', 'mouthFunnel', 'mouthPucker',
-      'mouthSmileLeft', 'mouthSmileRight', 'mouthClose']
     
-    mouthMorphs.forEach(morph => {
-      const idx = dict?.[morph]
+    // Resetear Oculus Visemes
+    const visemes = [
+      'viseme_sil', 'viseme_PP', 'viseme_FF', 'viseme_TH', 'viseme_DD',
+      'viseme_kk', 'viseme_CH', 'viseme_SS', 'viseme_nn', 'viseme_RR',
+      'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U', 'jawOpen'
+    ]
+    
+    visemes.forEach(viseme => {
+      const idx = dict?.[viseme]
       if (idx !== undefined) {
-        headMesh.current.morphTargetInfluences[idx] *= 0.85
+        // Suavizar hacia 0
+        headMesh.current.morphTargetInfluences[idx] *= 0.8
       }
     })
   }, [])
 
   return (
-    <group ref={group} position={[0, -1.55, 0]} scale={1}>
+    <group ref={group} position={[0, -1.62, 0]} scale={1}>
       <primitive object={scene} />
     </group>
   )
@@ -187,9 +208,9 @@ function AvatarScene({ isSpeaking, visemeData, onLoaded }) {
         target={[0, 0, 0]}
         enablePan={false}
         enableZoom={true}
-        minDistance={0.4}
-        maxDistance={1.5}
-        minPolarAngle={Math.PI / 2.5}
+        minDistance={1.5}
+        maxDistance={0.5}
+        minPolarAngle={Math.PI / 2.1}
         maxPolarAngle={Math.PI / 2}
       />
     </>
@@ -295,7 +316,7 @@ const Avatar3D = forwardRef(({
       
       {/* Canvas 3D */}
       <Canvas
-        camera={{ position: [0, 0, 0.6], fov: 30 }}
+        camera={{ position: [0, 0, 0.38], fov: 22 }}
         style={{ background: 'transparent' }}
         shadows
         dpr={[1, 2]}
