@@ -10,10 +10,13 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "axios": "^1.6.8",
+    "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "axios": "^1.6.8",
-    "lucide-react": "^0.344.0"
+    "three": "^0.160.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.1",
