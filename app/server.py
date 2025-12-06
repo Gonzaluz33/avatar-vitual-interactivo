@@ -1,13 +1,15 @@
 
 from __future__ import annotations
-from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import tempfile, os, json, base64
 from typing import List, Dict, Any
 from .asr import transcribe_file
 from .pipeline import Pipeline
+from .avatar import prepare_avatar_payload
 
 app = FastAPI(title="Local ASR + LLM API")
 
@@ -19,6 +21,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Servir audios temporales para el avatar
+app.mount("/static", StaticFiles(directory="data"), name="static")
+
 pipeline = Pipeline()
 
 class ChatRequest(BaseModel):
@@ -27,6 +32,26 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    system_prompt: str
+    turn: int
+    elapsed_min: float
+
+
+class SpeakRequest(BaseModel):
+    text: str
+
+
+class Viseme(BaseModel):
+    t: float
+    code: str
+    blendshape: str
+    weight: float
+
+
+class SpeakResponse(BaseModel):
+    text: str
+    audio_url: str
+    visemes: List[Viseme]
     system_prompt: str
     turn: int
     elapsed_min: float
@@ -73,6 +98,25 @@ async def run(file: UploadFile = File(...)):
     out = pipeline.run(asr["text"])
     out["transcript"] = asr["text"]
     return JSONResponse(out)
+
+
+@app.post("/avatar/speak", response_model=SpeakResponse)
+async def avatar_speak(request: SpeakRequest):
+    """Devuelve texto, audio temporal y visemas para controlar un avatar 3D."""
+    out = pipeline.run(request.text)
+
+    avatar_payload = prepare_avatar_payload(out["response"], duration_sec=2.4)
+    audio_path = avatar_payload["audio_path"]
+    visemes = avatar_payload["visemes"]
+
+    return SpeakResponse(
+        text=out["response"],
+        audio_url=f"/static/avatar_audio/{audio_path.name}",
+        visemes=visemes,
+        system_prompt=out["system_prompt"],
+        turn=out["turn"],
+        elapsed_min=out["elapsed_min"],
+    )
 
 class ConnectionManager:
     def __init__(self):
