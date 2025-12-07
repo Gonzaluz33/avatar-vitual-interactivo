@@ -1,5 +1,61 @@
 {
   "facts": [],
   "history": [
+    {
+      "user": "Hola",
+      "assistant": "¡Hola! ¿Cómo estás? Yo estoy contento hoy. ¿Querés que juguemos o charlemos de algo?"
+    },
+    {
+      "user": "Hola, ¿cómo estás?",
+      "assistant": "¡Hola! Estoy bien, gracias. Me gusta charlar con vos. ¿Vos cómo estás? ¿Querés hablar de algo?"
+    },
+    {
+      "user": "Hola.",
+      "assistant": "¡Hola! ¿Cómo estás? Yo soy Facundo. ¿Querés charlar un ratito?"
+    },
+    {
+      "user": "Hola. Sí.",
+      "assistant": "¡Hola! ¿Cómo estás? \n\n¿Querés que hablemos de algo o juguemos con ideas?"
+    },
+    {
+      "user": "Hola.",
+      "assistant": "¡Hola! ¿Cómo estás? Yo soy Facundo. ¿Querés jugar o charlar de algo?"
+    },
+    {
+      "user": "Hola.",
+      "assistant": "¡Hola de nuevo! ¿Querés contarme algo o preguntarme cosas? Yo estoy acá para charlar."
+    },
+    {
+      "user": "Hola  ¿Tú eres?",
+      "assistant": "Yo soy Facundo, tengo 6 años. Me gusta hacer preguntas y aprender cosas nuevas. ¿Y vos cómo te llamás?"
+    },
+    {
+      "user": "Hola",
+      "assistant": "¡Hola! ¿Cómo estás? Yo estoy contento hoy. ¿Querés jugar o charlar de algo?"
+    },
+    {
+      "user": "Hola.",
+      "assistant": "¡Hola! ¿Cómo estás? \n\nYo soy Facundo y tengo 6 años. ¿Querés jugar o charlar de algo?"
+    },
+    {
+      "user": "Hola",
+      "assistant": "¡Hola! ¿Cómo estás? Yo soy Sofía y tengo 6 años. ¿Querés jugar o charlar de algo?"
+    },
+    {
+      "user": "¡Hola!",
+      "assistant": "¡Hola! ¿Cómo estás? \n\nYo soy Sofía y tengo 6 años. ¿Querés jugar o charlar de algo?"
+    },
+    {
+      "user": "Hola",
+      "assistant": "¡Hola! ¿Cómo estás? Yo soy Sofía y tengo 6 años. ¿Querés jugar o charlar de algo?"
+    },
+    {
+      "user": "Hola",
+      "assistant": "¡Hola! ¿Cómo estás? Yo soy Sofía y tengo 6 años. ¿Querés que juguemos o hablemos de algo?"
+    },
+    {
+      "user": "Hola",
+      "assistant": "¡Hola! ¿Cómo estás? Yo soy Sofía y tengo 6 años. ¿Querés jugar o charlar un ratito?"
+    }
   ]
 }

@@ -1,179 +1,159 @@
+// Backend base URL for TTS streaming
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5175'
+
 const VOICE_PROFILES = [
-  {
-    minTime: 0,
-    maxTime: 10,
-    name: 'Facundo (6-8 años)',
-    config: {
-      
-      pitch: 1.2,
-      rate: 1.1,
-      volume: 1.0,
-      voicePattern: ['es-MX', 'es-ES', 'es-AR'], 
-    }
-  },
-  {
-    minTime: 10,
-    maxTime: 20,
-    name: 'Rodrigo (9-12 años)',
-    config: {
-      pitch: 1.5,
-      rate: 1.05,
-      volume: 1.0,
-      voicePattern: ['es-MX', 'es-ES', 'es-AR'],
-    }
-  },
-  {
-    minTime: 20,
-    maxTime: 35,
-    name: 'Javier (13-15 años)',
-    config: {
-      pitch: 1.2,
-      rate: 1.0,
-      volume: 1.0,
-      voicePattern: ['es-MX', 'es-ES', 'es-AR'],
-    }
-  },
-  {
-    minTime: 35,
-    maxTime: 50,
-    name: 'Marcelo (16-18 años)',
-    config: {
-      pitch: 1.0,
-      rate: 0.95,
-      volume: 1.0,
-      voicePattern: ['es-ES', 'es-MX', 'es-AR'],
-    }
-  },
-  {
-    minTime: 50,
-    maxTime: Infinity,
-    name: 'Ricardo (Adulto)',
-    config: {
-      pitch: 0.9,
-      rate: 0.9,
-      volume: 1.0,
-      voicePattern: ['es-ES', 'es-MX', 'es-AR'],
-    }
-  }
+  { minTime: 0, maxTime: 10, name: 'Facundo (6-8 años)', pitch: 1.2 },
+  { minTime: 10, maxTime: 20, name: 'Rodrigo (9-12 años)', pitch: 1.5 },
+  { minTime: 20, maxTime: 35, name: 'Javier (13-15 años)', pitch: 1.2 },
+  { minTime: 35, maxTime: 50, name: 'Marcelo (16-18 años)', pitch: 1.0 },
+  { minTime: 50, maxTime: Infinity, name: 'Ricardo (Adulto)', pitch: 0.9 },
 ]
 
 class TTSService {
   constructor() {
-    this.synth = window.speechSynthesis
-    this.currentUtterance = null
     this.isEnabled = true
-    this.voices = []
-    this.voicesLoaded = false
-    
-    // Cargar voces disponibles
-    this.loadVoices()
-    
-    if (this.synth.onvoiceschanged !== undefined) {
-      this.synth.onvoiceschanged = () => this.loadVoices()
+    this.currentSource = null
+    this.audioContext = null
+    this.gainNode = null
+    this.abortController = null
+  }
+
+  _ensureAudioContext() {
+    if (!this.audioContext) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      this.audioContext = new AudioCtx()
+      this.gainNode = this.audioContext.createGain()
+      this.gainNode.connect(this.audioContext.destination)
     }
   }
 
-  loadVoices() {
-    this.voices = this.synth.getVoices()
-    this.voicesLoaded = this.voices.length > 0
-    console.log('Voces disponibles:', this.voices.map(v => `${v.name} (${v.lang})`))
+  _pitchToSpeed(pitch) {
+    // Map pitch range [0.9, 1.5] to speed range [0.9, 1.2]
+    const minPitch = 0.9
+    const maxPitch = 1.5
+    const minSpeed = 0.9
+    const maxSpeed = 1.2
+    const clamped = Math.min(Math.max(pitch, minPitch), maxPitch)
+    const ratio = (clamped - minPitch) / (maxPitch - minPitch)
+    return minSpeed + ratio * (maxSpeed - minSpeed)
   }
 
-  selectVoiceByTime(elapsedMin) {
-    if (!this.voicesLoaded || this.voices.length === 0) {
-      this.loadVoices()
-      return null
-    }
-
-    const profile = VOICE_PROFILES.find(
-      p => elapsedMin >= p.minTime && elapsedMin < p.maxTime
-    ) || VOICE_PROFILES[0]
-
-    console.log(`Seleccionando voz para ${profile.name} (${elapsedMin.toFixed(1)} min)`)
-
-    for (const langPattern of profile.config.voicePattern) {
-      const matchingVoice = this.voices.find(voice => 
-        voice.lang.startsWith(langPattern) || voice.lang.includes(langPattern)
-      )
-      if (matchingVoice) {
-        return { voice: matchingVoice, config: profile.config, profileName: profile.name }
-      }
-    }
-
-    const spanishVoice = this.voices.find(voice => 
-      voice.lang.startsWith('es')
-    )
-    
-    return spanishVoice 
-      ? { voice: spanishVoice, config: profile.config, profileName: profile.name }
-      : null
+  _profileForTime(elapsedMin = 0) {
+    const profile =
+      VOICE_PROFILES.find(p => elapsedMin >= p.minTime && elapsedMin < p.maxTime) ||
+      VOICE_PROFILES[0]
+    const speed = this._pitchToSpeed(profile.pitch)
+    return { profile, speed }
   }
 
-  speak(text, elapsedMin = 0, onEnd = null, onStart = null) {
+  async speak(text, elapsedMin = 0, onEnd = null, onStart = null) {
     this.cancel()
 
-    if (!this.isEnabled || !text) {
-      return
+    if (!this.isEnabled || !text) return
+
+    this._ensureAudioContext()
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume()
     }
 
-    const voiceSelection = this.selectVoiceByTime(elapsedMin)
-    
-    if (!voiceSelection) {
-      console.warn('No hay voces disponibles para TTS')
-      return
+    const { profile, speed } = this._profileForTime(elapsedMin)
+    console.log(`Solicitando TTS (${profile.name}) speed=${speed.toFixed(2)}`)
+
+    // Trigger loading state immediately (keeps "pensando" while request/decoding)
+    let started = false
+    if (onStart) {
+      onStart()
+      started = true
     }
 
-    const { voice, config, profileName } = voiceSelection
+    try {
+      this.abortController = new AbortController()
+      const response = await fetch(`${API_BASE}/tts/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, elapsed_min: elapsedMin }),
+        signal: this.abortController.signal,
+      })
 
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.voice = voice
-    utterance.pitch = config.pitch
-    utterance.rate = config.rate
-    utterance.volume = config.volume
-    utterance.lang = voice.lang
+      if (!response.ok || !response.body) {
+        throw new Error(`TTS HTTP ${response.status}`)
+      }
 
-    utterance.onstart = () => {
-      console.log(` Reproduciendo con voz: ${profileName} (${voice.name})`)
-      if (onStart) onStart()
-    }
+      const reader = response.body.getReader()
+      const chunks = []
+      let received = 0
 
-    utterance.onend = () => {
-      console.log(' Reproducción finalizada')
-      this.currentUtterance = null
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        if (value) {
+          chunks.push(value)
+          received += value.length
+        }
+      }
+
+      const audioBytes = new Uint8Array(received)
+      let offset = 0
+      for (const chunk of chunks) {
+        audioBytes.set(chunk, offset)
+        offset += chunk.length
+      }
+
+      const arrayBuffer = audioBytes.buffer
+      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0))
+
+      const source = this.audioContext.createBufferSource()
+      source.buffer = audioBuffer
+      source.connect(this.gainNode)
+
+      source.onended = () => {
+        this.currentSource = null
+        if (onEnd) onEnd()
+      }
+
+      this.currentSource = source
+      if (onStart && !started) onStart()
+      source.start(0)
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log('TTS cancelado')
+      } else {
+        console.error('Error en TTS:', err)
+      }
+      this.currentSource = null
       if (onEnd) onEnd()
     }
-
-    utterance.onerror = (event) => {
-      console.error('Error en TTS:', event)
-      this.currentUtterance = null
-      if (onEnd) onEnd()
-    }
-
-    this.currentUtterance = utterance
-    this.synth.speak(utterance)
   }
 
   cancel() {
-    if (this.synth.speaking) {
-      this.synth.cancel()
+    if (this.abortController) {
+      this.abortController.abort()
+      this.abortController = null
     }
-    this.currentUtterance = null
+    if (this.currentSource) {
+      try {
+        this.currentSource.stop()
+      } catch (e) {
+        // ignore
+      }
+      this.currentSource = null
+    }
   }
 
   pause() {
-    if (this.synth.speaking && !this.synth.paused) {
-      this.synth.pause()
+    if (this.audioContext && this.audioContext.state === 'running') {
+      this.audioContext.suspend()
     }
   }
 
   resume() {
-    if (this.synth.paused) {
-      this.synth.resume()
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      this.audioContext.resume()
     }
   }
 
   isSpeaking() {
-    return this.synth.speaking
+    return !!this.currentSource
   }
 
   setEnabled(enabled) {
@@ -183,22 +163,17 @@ class TTSService {
     }
   }
 
-  /**
-   * Obtiene el estado actual
-   */
   getStatus() {
     return {
       enabled: this.isEnabled,
-      speaking: this.synth.speaking,
-      paused: this.synth.paused,
-      voicesAvailable: this.voicesLoaded,
-      voiceCount: this.voices.length
+      speaking: !!this.currentSource,
+      paused: this.audioContext ? this.audioContext.state === 'suspended' : false,
+      voicesAvailable: true,
+      voiceCount: 1,
     }
   }
 }
 
 export const ttsService = new TTSService()
 
-export const useTTS = () => {
-  return ttsService
-}
+export const useTTS = () => ttsService

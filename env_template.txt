@@ -1,0 +1,34 @@
+# Copy this file to .env and fill in your API keys
+# Command: cp env_template.txt .env
+
+# LLM Configuration
+ANTHROPIC_API_KEY=your-anthropic-api-key-here
+CLAUDE_MODEL=claude-sonnet-4-5
+LLM_PROVIDER=anthropic
+
+# OpenAI Configuration (optional - for AIAvatarKit STT and alternative LLM)
+# OPENAI_API_KEY=your-openai-key-here
+# OPENAI_MODEL=gpt-4o
+
+# Gemini Configuration (recommended for AIAvatarKit LLM and STT)
+# GEMINI_API_KEY=your-gemini-key-here
+# GEMINI_MODEL=gemini-2.0-flash
+
+# VOICEVOX Configuration (for AIAvatarKit TTS)
+VOICEVOX_BASE_URL=http://127.0.0.1:50021
+VOICEVOX_SPEAKER=1
+
+# AIAvatarKit Configuration
+AIAVATAR_DEBUG=true
+AIAVATAR_LANGUAGE=es-ES
+AIAVATAR_WAKEWORDS=Hola,Buenos días,Buenas tardes
+AIAVATAR_VOLUME_THRESHOLD=-30.0
+AIAVATAR_LLM_PROVIDER=gemini
+
+# TTS (Coqui) Configuration
+TTS_MODEL=tts_models/es/mai/tacotron2-DDC
+TTS_CACHE_DIR=.cache/tts
+TTS_FEMININE_SPEED=1.10
+
+# Memory Configuration
+MEMORY_PATH=data/prompt_memory.json

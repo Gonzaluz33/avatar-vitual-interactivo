@@ -10,13 +10,18 @@ sse-starlette>=2.0.0
 faster-whisper>=1.0.0
 sounddevice>=0.4.7
 webrtcvad-wheels>=2.0.14
-numpy>=1.26
+numpy>=2.2.3  # Required by aiavatar>=0.7.0
 soundfile>=0.12
 ffmpeg-python>=0.2.0
 typer>=0.12.3
 rich>=13.7.1
 ollama>=0.3.0
-pydantic>=2.8
+pydantic>=2.10,<3  # Pinned to >=2.10 for openai-agents compatibility
+pydub>=0.25.1        # Audio processing utilities
+
+# Optional: Coqui TTS (numpy pin in PyPI conflicts with numpy>=2.2.3)
+# Install manually after numpy with --no-deps:
+#   pip install --no-deps TTS==0.22.0
 
 # AIAvatarKit integration
 aiavatar>=0.7.0
@@ -26,4 +31,23 @@ pyaudio>=0.2.14
 # LLM providers for AIAvatarKit
 google-genai>=1.0.0    # Para Gemini (recomendado - no requiere OpenAI)
 # openai>=1.0.0        # Opcional - solo si usas OpenAI para STT/LLM
+
+# Optional dependencies (NOT compatible with aiavatar - requires numpy<2.0)
+# These packages conflict with aiavatar which requires numpy>=2.2.3
+# Only uncomment if you're not using aiavatar:
+# langchain>=0.2.16,<0.3.0
+# langchain-core>=0.2.38,<0.3.0
+# langchain-community>=0.2.17,<0.3.0
+# langchain-openai>=0.1.25,<0.3.0
+# langchain-aws>=0.1.18,<0.3.0
+# langchain-postgres>=0.0.12
+# langsmith>=0.1.17,<0.2.0
+# unstructured>=0.14.10
+# unstructured-client>=0.25.9
+# unstructured-inference>=0.7.41
+# librosa>=0.10.2
+# openai-agents>=0.0.9
+# pandas>=2.1.4
+# numba>=0.61.0
+# numpy>=1.26,<2.0  # Required if using packages above
 

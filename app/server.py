@@ -1,13 +1,15 @@
 
 from __future__ import annotations
 from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import tempfile, os, json, base64
 from typing import List, Dict, Any, Optional
 from .asr import transcribe_file
 from .pipeline import Pipeline
+from .config import TTS_SPEED_PROFILES
+from .tts import tts_service
 
 # Importación condicional de AIAvatarKit
 AIAVATAR_ENABLED = os.getenv("AIAVATAR_ENABLED", "false").lower() == "true"
@@ -68,6 +70,11 @@ class ChatResponse(BaseModel):
     turn: int
     elapsed_min: float
 
+
+class TTSRequest(BaseModel):
+    text: str
+    elapsed_min: float = 0.0
+
 @app.get("/")
 async def root():
     return {"message": "Avatar Virtual Interactivo API", "status": "running"}
@@ -110,6 +117,24 @@ async def run(file: UploadFile = File(...)):
     out = pipeline.run(asr["text"])
     out["transcript"] = asr["text"]
     return JSONResponse(out)
+
+
+def _pick_speed(elapsed_min: float) -> float:
+    for start, end, speed in TTS_SPEED_PROFILES:
+        if start <= elapsed_min < end:
+            return speed
+    return 1.0
+
+
+@app.post("/tts/stream")
+async def tts_stream(request: TTSRequest):
+    """
+    Streams TTS audio as audio/wav using Coqui TTS.
+    """
+    speed = _pick_speed(request.elapsed_min or 0.0)
+    generator = tts_service.stream_wav(request.text, speed=speed)
+    headers = {"X-TTS-Speed": str(speed)}
+    return StreamingResponse(generator, media_type="audio/wav", headers=headers)
 
 class ConnectionManager:
     def __init__(self):
