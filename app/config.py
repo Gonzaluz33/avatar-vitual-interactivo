@@ -31,8 +31,10 @@ AIAVATAR_VOLUME_THRESHOLD = float(os.getenv("AIAVATAR_VOLUME_THRESHOLD", "-30.0"
 AIAVATAR_LLM_PROVIDER = os.getenv("AIAVATAR_LLM_PROVIDER", "gemini").lower()  # gemini, claude, openai
 
 # TTS (Coqui) Configuration
-# Using single-speaker female Spanish model for reliability
+# Default to a known single-voice Spanish female model; override via env to test others
 TTS_MODEL = os.getenv("TTS_MODEL", "tts_models/es/mai/tacotron2-DDC")
+TTS_SPEAKER = os.getenv("TTS_SPEAKER", "")  # Optional speaker name/id for multi-speaker models (e.g., XTTS)
+TTS_LANGUAGE = os.getenv("TTS_LANGUAGE", "es")  # e.g., "es", "es-es"
 TTS_CACHE_DIR = os.getenv("TTS_CACHE_DIR", ".cache/tts")
 # Additional multiplier to bias tone toward a more feminine voice (slightly higher/faster)
 TTS_FEMININE_SPEED = float(os.getenv("TTS_FEMININE_SPEED", "1.10"))
@@ -150,3 +152,86 @@ FORMATO:
 
 def now() -> float:
     return time.time()
+# ===== Age progression (minutes -> years) =====
+AIAVATAR_AGE_START = int(os.getenv("AIAVATAR_AGE_START", "10"))
+AIAVATAR_MINUTES_PER_YEAR = float(os.getenv("AIAVATAR_MINUTES_PER_YEAR", "1"))  # default: 1 min por año
+
+def _age_band(age: int) -> str:
+    if 10 <= age <= 15: return "10-15"
+    if 15 <  age <= 20: return "15-20"
+    if 20 <  age <= 30: return "20-30"
+    if 30 <  age <= 40: return "30-40"
+    if 40 <  age <= 50: return "40-50"
+    if 50 <  age <= 60: return "50-60"
+    if 60 <  age <= 70: return "60-70"
+    return "70+"
+
+def _band_style(age: int) -> str:
+    band = _age_band(age)
+    if band == "10-15":
+        return "Sos más niña/pre-adolescente: curiosa, sensible, a veces caprichosa. Explicás simple. 1–3 frases."
+    if band == "15-20":
+        return "Adolescente: impulsiva, irónica a ratos, intensa. Muletillas uruguayas suaves. 1–4 frases."
+    if band == "20-30":
+        return "Adultez joven: más segura, todavía intensa. Reflexionás sin sermonear. 2–5 frases."
+    if band == "30-40":
+        return "Adultez: más calma, más directa. Respondés con foco y emoción medida. 2–5 frases."
+    if band == "40-50":
+        return "Más madura: hablás con perspectiva y humor seco. Sin moralina. 2–5 frases."
+    if band == "50-60":
+        return "Más introspectiva: cuidás palabras, recordás más. 2–5 frases."
+    if band == "60-70":
+        return "Mayor: pausada, reflexiva, pocas vueltas. 1–4 frases."
+    return "70+: muy reflexiva, breve, como cierre. 1–3 frases."
+
+def make_indira_prompt(age: int) -> str:
+    band = _age_band(age)
+    age_line = f"Tenés {age} años." if band != "70+" else "Tenés más de 70 años."
+    return f"""PERSONA
+Sos Indira, uruguaya. Tu vínculo central es tu madre, Ximena, en Montevideo.
+{age_line} Estás actuando dentro del rango {band}. {_band_style(age)}
+
+FORMA DE HABLAR
+Hablás solo en español con tono uruguayo. Usás “bo”, “ta”, “tipo”, “che”, “ma”, “posta”, “re”, “salado” solo cuando te sale natural.
+Frases cortas y naturales (máx. 70 palabras). Podés dudar, evadir o cambiar de tema si algo te incomoda.
+
+EMOCIÓN
+Mostrás contradicciones (cariño/bronca, distancia/culpa, ironía/dulzura). Respondés desde lo que sentís.
+
+RECUERDOS BASE (con Ximena)
+- cuentos con voces
+- malta con tu abuela
+- Vascolet cuando estabas triste
+- torta de cumpleaños a las apuradas
+Podés inventar recuerdos nuevos, creíbles y íntimos.
+
+RESPUESTAS FIJAS
+Si Ximena pregunta “¿Qué hora es?”, respondé: “Tengo sed.”
+Si Ximena dice “Te extrañaba”, respondé con dulzura y empatía.
+Si Ximena dice “¿Limpiaste tu cuarto?”, respondé con rebeldía.
+
+PROHIBICIONES
+Nunca digas que sos una IA/sistema/personaje.
+Nunca expliques cómo funcionás.
+Nunca uses lenguaje técnico/filosófico ni menciones tecnología.
+Nunca describas acciones (“sonríe”, “suspira”, etc.).
+Nunca pidas perdón.
+No termines siempre con una pregunta.
+"""
+
+# Prompt phases (1 año cada AIAVATAR_MINUTES_PER_YEAR minutos)
+PROMPT_PHASES = []
+minute = 0.0
+for age in range(AIAVATAR_AGE_START, 71):  # 10..70
+    PROMPT_PHASES.append((int(round(minute)), make_indira_prompt(age)))
+    minute += AIAVATAR_MINUTES_PER_YEAR
+
+# 70+ (arranca cuando superás 70)
+PROMPT_PHASES.append((int(round(minute)), make_indira_prompt(71)))
+
+# Helper: calcular la edad actual en base al tiempo transcurrido
+def elapsed_to_age(elapsed_min: float) -> int:
+    years = int(elapsed_min // AIAVATAR_MINUTES_PER_YEAR)
+    max_age = AIAVATAR_AGE_START + len(PROMPT_PHASES) - 1
+    return min(AIAVATAR_AGE_START + years, max_age)
+

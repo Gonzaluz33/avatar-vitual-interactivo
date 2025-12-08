@@ -7,7 +7,7 @@ from typing import Generator, Optional
 import numpy as np
 import soundfile as sf
 
-from .config import TTS_CACHE_DIR, TTS_MODEL, TTS_FEMININE_SPEED
+from .config import TTS_CACHE_DIR, TTS_MODEL, TTS_FEMININE_SPEED, TTS_SPEAKER, TTS_LANGUAGE
 
 
 class TTSService:
@@ -20,6 +20,8 @@ class TTSService:
         self.model_name = model_name
         self.cache_dir = cache_dir
         self._model: Optional[object] = None
+        self.speaker_override = TTS_SPEAKER.strip() or None
+        self.language = TTS_LANGUAGE.strip() or None
 
     def _pick_speaker(self, model) -> Optional[str]:
         # For single-speaker models, there may be no speaker list; return None
@@ -65,8 +67,15 @@ class TTSService:
 
             except ImportError as e:
                 raise RuntimeError("Coqui TTS no instalado. Instala con: pip install --no-deps TTS==0.22.0") from e
-            # TTS 0.22.0 does not accept cache_dir; it downloads to the default user cache.
-            self._model = CoquiTTS(model_name=self.model_name, progress_bar=False)
+            try:
+                # TTS 0.22.0 does not accept cache_dir; it downloads to the default user cache.
+                self._model = CoquiTTS(model_name=self.model_name, progress_bar=False)
+            except KeyError as e:
+                raise RuntimeError(
+                    f"Modelo TTS no encontrado ({self.model_name}). "
+                    "Prueba con otro, p.ej.: tts_models/es/mai/tacotron2-DDC "
+                    "o configura TTS_MODEL con un nombre válido."
+                ) from e
         return self._model
 
     def generate_wav_bytes(self, text: str, speed: float = 1.0) -> bytes:
@@ -76,10 +85,33 @@ class TTSService:
         model = self._load_model()
         # Bias towards a more feminine tone by slightly increasing speed
         effective_speed = speed * TTS_FEMININE_SPEED
-        # For XTTS v2 we set language to Spanish; speed bias for feminine tone
-        speaker = self._pick_speaker(model)
-        # For single-speaker models, speaker and language can be omitted
-        wav: np.ndarray = model.tts(text=text, speed=effective_speed, speaker=speaker)
+        # Allow explicit speaker override; fallback to first speaker if provided by model
+        speaker = self.speaker_override or self._pick_speaker(model)
+
+        # XTTS supports language argument; single-speaker models generally ignore it
+        use_language = self.language if "xtts" in self.model_name.lower() else None
+
+        if speaker is None and use_language:
+            # XTTS and other multi-speaker models require an explicit speaker
+            raise ValueError(
+                "El modelo TTS es multi-speaker y requiere un speaker. "
+                "Configura TTS_SPEAKER (nombre/id) o usa un modelo de una sola voz "
+                "(ej: tts_models/es/mai/vits)."
+            )
+
+        if use_language:
+            wav: np.ndarray = model.tts(
+                text=text,
+                speed=effective_speed,
+                speaker=speaker,
+                language=use_language,
+            )
+        else:
+            wav: np.ndarray = model.tts(
+                text=text,
+                speed=effective_speed,
+                speaker=speaker,
+            )
         with io.BytesIO() as buffer:
             # 22050 Hz is the default output for this model
             sf.write(buffer, wav, 22050, format="WAV", subtype="PCM_16")

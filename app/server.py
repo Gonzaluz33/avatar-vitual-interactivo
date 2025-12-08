@@ -8,6 +8,7 @@ import tempfile, os, json, base64, logging, time
 from typing import List, Dict, Any, Optional
 from .asr import transcribe_file
 from .pipeline import Pipeline
+from .config import elapsed_to_age
 from .config import TTS_SPEED_PROFILES
 from .tts import tts_service
 
@@ -73,6 +74,7 @@ class ChatResponse(BaseModel):
     system_prompt: str
     turn: int
     elapsed_min: float
+    age: int
 
 
 class TTSRequest(BaseModel):
@@ -85,7 +87,13 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "turn": pipeline.turn, "elapsed_min": pipeline.current_elapsed_min()}
+    elapsed = pipeline.current_elapsed_min()
+    return {
+        "status": "ok",
+        "turn": pipeline.turn,
+        "elapsed_min": elapsed,
+        "age": elapsed_to_age(elapsed),
+    }
 
 @app.post("/reset")
 async def reset():
@@ -108,7 +116,8 @@ async def chat_endpoint(request: ChatRequest):
         response=out["response"],
         system_prompt=out["system_prompt"],
         turn=out["turn"],
-        elapsed_min=out["elapsed_min"]
+        elapsed_min=out["elapsed_min"],
+        age=out["age"],
     )
 
 @app.post("/run")
@@ -199,7 +208,8 @@ async def websocket_voice_endpoint(websocket: WebSocket):
                         "text": out["response"],
                         "system_prompt": out["system_prompt"],
                         "turn": out["turn"],
-                        "elapsed_min": out["elapsed_min"]
+                        "elapsed_min": out["elapsed_min"],
+                        "age": out.get("age"),
                     }, websocket)
                     
                 except Exception as e:
@@ -223,7 +233,8 @@ async def websocket_voice_endpoint(websocket: WebSocket):
                         "text": out["response"],
                         "system_prompt": out["system_prompt"],
                         "turn": out["turn"],
-                        "elapsed_min": out["elapsed_min"]
+                        "elapsed_min": out["elapsed_min"],
+                        "age": out.get("age"),
                     }, websocket)
                 except Exception as e:
                     logger.exception("❌ Error handling text message")

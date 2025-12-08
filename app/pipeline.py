@@ -2,10 +2,13 @@
 from __future__ import annotations
 import time
 from typing import Dict, Any, List
-from .config import PROMPT_PHASES, now
+import logging
+from .config import PROMPT_PHASES, now, elapsed_to_age
 from .scheduler import pick_system_prompt
 from .memory import load_memory, save_memory, update_history, append_fact, clear_memory
 from .llm import chat
+
+logger = logging.getLogger("app.pipeline")
 
 def extract_fact(llm_text: str) -> str | None:
     return None
@@ -20,8 +23,14 @@ class Pipeline:
     def current_elapsed_min(self) -> float:
         return (now() - self.session_start) / 60.0
 
+    def current_age(self) -> int:
+        return elapsed_to_age(self.current_elapsed_min())
+
     def run(self, user_text: str, provider: str | None = None) -> Dict[str, Any]:
-        system_prompt = pick_system_prompt(self.current_elapsed_min(), self.turn, PROMPT_PHASES)
+        elapsed = self.current_elapsed_min()
+        age = elapsed_to_age(elapsed)
+        logger.info("🎂 Edad actual: %s (elapsed %.2f min)", age, elapsed)
+        system_prompt = pick_system_prompt(elapsed, self.turn, PROMPT_PHASES)
         response = chat(system_prompt, user_text, history=self.history, provider=provider)
         self.history.extend([{"role": "user", "content": user_text}, {"role": "assistant", "content": response}])
         self.memory = update_history(self.memory, user_text, response)
@@ -34,7 +43,8 @@ class Pipeline:
             "system_prompt": system_prompt,
             "response": response,
             "turn": self.turn,
-            "elapsed_min": self.current_elapsed_min(),
+            "elapsed_min": elapsed,
+            "age": age,
             "memory_path": str(self.memory_path if hasattr(self, "memory_path") else "data/prompt_memory.json")
         }
 
