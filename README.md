@@ -169,6 +169,23 @@ chmod +x start.sh
 - **POST** `/run` - Pipeline completo (audio → transcripción → LLM)
   - Multipart form-data con campo `file`
   - Retorna: `{ transcript, response, system_prompt, turn, elapsed_min }`
+- **POST** `/avatar/speak` - Devuelve payload listo para un avatar 3D (texto, audio temporal y visemas)
+  - Body JSON: `{ text: string }`
+  - Retorna:
+    ```json
+    {
+      "text": "Respuesta generada por el LLM",
+      "audio_url": "/static/avatar_audio/avatar_123.wav",
+      "visemes": [
+        { "t": 0.0, "code": "sil", "blendshape": "jawOpen", "weight": 0.05 },
+        { "t": 0.1, "code": "M", "blendshape": "mouthClose", "weight": 0.65 }
+      ],
+      "system_prompt": "...",
+      "turn": 3,
+      "elapsed_min": 1.2
+    }
+    ```
+  - `audio_url` apunta a un WAV temporal generado por el backend (ideal para pruebas de sincronía); en producción puedes reemplazarlo por tu TTS y mantener el mismo esquema de respuesta.
 
 ### WebSocket
 
@@ -226,6 +243,59 @@ chmod +x start.sh
 4. **Recibe la respuesta**: El sistema transcribe, procesa y responde automáticamente
 5. **Chat de texto**: También puedes escribir mensajes en el input de texto
 6. **Text-to-Speech**: Las respuestas se leen automáticamente con voz adaptativa
+
+## 🧑‍🎨 Integración de avatar (Ready Player Me + Three.js)
+
+El frontend incluye un panel listo para usar con el avatar de Ready Player Me publicado en `https://models.readyplayer.me/69346d21347390125d33e7ae.glb`. Solo escribe un texto y el backend generará audio temporal y visemas sincronizados.
+
+El backend ya entrega un payload listo para el frontend 3D vía `/avatar/speak`. El flujo recomendado es:
+
+1) **Frontend (Three.js o Babylon.js)**
+
+- Cargar el MetaHuman exportado a GLTF/FBX con esqueleto + blendshapes faciales.
+- Reproducir `audio_url` con `new Audio(...)`.
+- En cada `requestAnimationFrame`, usar `audio.currentTime` para buscar el visema activo y actualizar `mesh.morphTargetInfluences` mapeando `viseme.code` (o `blendshape`) a tus nombres de blendshape.
+
+2) **Backend (FastAPI + LangGraph + TTS)**
+
+- `/avatar/speak` recibe `{ text }`, ejecuta el pipeline LLM y devuelve `{ text, audio_url, visemes }`.
+- El WAV que se devuelve es temporal y sirve como placeholder; puedes reemplazarlo por la salida de tu TTS manteniendo la misma estructura.
+- Si tu TTS entrega fonemas/visemas, solo sustituye el arreglo `visemes` para alinear labio sincronizado real.
+
+3) **Ejemplo de consumo en el frontend**
+
+```js
+const res = await fetch("http://localhost:5175/avatar/speak", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ text: "Hola, soy tu asistente" })
+});
+const payload = await res.json();
+
+const audio = new Audio(payload.audio_url);
+audio.play();
+
+function updateLipSync(time) {
+  const current = audio.currentTime;
+  const active = payload.visemes.findLast(v => v.t <= current) || payload.visemes[0];
+  applyBlendshape(active.blendshape, active.weight);
+  requestAnimationFrame(updateLipSync);
+}
+requestAnimationFrame(updateLipSync);
+```
+
+4) **Mapeo de visemas sugerido**
+
+| `code` | Blendshape sugerido | Comentario |
+| --- | --- | --- |
+| `sil` | `jawOpen` (peso bajo) | Boca relajada |
+| `M` | `mouthClose` | Labios cerrados |
+| `AA` | `jawOpen` | Boca abierta |
+| `IY` | `mouthSmile_L` / `mouthSmile_R` | Sonrisa leve |
+| `UH` | `mouthPucker` | Boca en "U" |
+| `FV` | `mouthShrugLower` | Labio inferior sobre dientes |
+
+> Reemplaza los nombres de blendshape por los de tu MetaHuman si difieren; el backend es agnóstico al rig.
 
 ### Características de la interfaz
 

@@ -1,16 +1,22 @@
 
 from __future__ import annotations
+
 from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import JSONResponse, StreamingResponse
+
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import tempfile, os, json, base64, logging, time
 from typing import List, Dict, Any, Optional
 from .asr import transcribe_file
 from .pipeline import Pipeline
+
 from .config import elapsed_to_age
 from .config import TTS_SPEED_PROFILES
 from .tts import tts_service
+
+from .avatar import prepare_avatar_payload
 
 # Importación condicional de AIAvatarKit
 AIAVATAR_ENABLED = os.getenv("AIAVATAR_ENABLED", "false").lower() == "true"
@@ -63,6 +69,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Servir audios temporales para el avatar
+app.mount("/static", StaticFiles(directory="data"), name="static")
+
 pipeline = Pipeline()
 
 class ChatRequest(BaseModel):
@@ -80,6 +89,26 @@ class ChatResponse(BaseModel):
 class TTSRequest(BaseModel):
     text: str
     elapsed_min: float = 0.0
+
+
+class SpeakRequest(BaseModel):
+    text: str
+
+
+class Viseme(BaseModel):
+    t: float
+    code: str
+    blendshape: str
+    weight: float
+
+
+class SpeakResponse(BaseModel):
+    text: str
+    audio_url: str
+    visemes: List[Viseme]
+    system_prompt: str
+    turn: int
+    elapsed_min: float
 
 @app.get("/")
 async def root():
@@ -132,6 +161,7 @@ async def run(file: UploadFile = File(...)):
     return JSONResponse(out)
 
 
+
 def _pick_speed(elapsed_min: float) -> float:
     for start, end, speed in TTS_SPEED_PROFILES:
         if start <= elapsed_min < end:
@@ -148,6 +178,25 @@ async def tts_stream(request: TTSRequest):
     generator = tts_service.stream_wav(request.text, speed=speed)
     headers = {"X-TTS-Speed": str(speed)}
     return StreamingResponse(generator, media_type="audio/wav", headers=headers)
+
+@app.post("/avatar/speak", response_model=SpeakResponse)
+async def avatar_speak(request: SpeakRequest):
+    """Devuelve texto, audio temporal y visemas para controlar un avatar 3D."""
+    out = pipeline.run(request.text)
+
+    avatar_payload = prepare_avatar_payload(out["response"], duration_sec=2.4)
+    audio_path = avatar_payload["audio_path"]
+    visemes = avatar_payload["visemes"]
+
+    return SpeakResponse(
+        text=out["response"],
+        audio_url=f"/static/avatar_audio/{audio_path.name}",
+        visemes=visemes,
+        system_prompt=out["system_prompt"],
+        turn=out["turn"],
+        elapsed_min=out["elapsed_min"],
+    )
+
 
 class ConnectionManager:
     def __init__(self):

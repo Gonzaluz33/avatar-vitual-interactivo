@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from './context/AppContext'
+
 import Avatar3D from './components/Avatar3D'
+
 
 function App() {
   const { 
@@ -159,7 +161,9 @@ function App() {
               />
             ))}
           </div>
+
         )}
+
       </div>
     </div>
   )
