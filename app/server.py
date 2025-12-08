@@ -4,7 +4,7 @@ from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconn
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import tempfile, os, json, base64
+import tempfile, os, json, base64, logging, time
 from typing import List, Dict, Any, Optional
 from .asr import transcribe_file
 from .pipeline import Pipeline
@@ -15,6 +15,10 @@ from .tts import tts_service
 AIAVATAR_ENABLED = os.getenv("AIAVATAR_ENABLED", "false").lower() == "true"
 aiavatar_http_server = None
 aiavatar_ws_server = None
+
+logger = logging.getLogger("app.server")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 if AIAVATAR_ENABLED:
     try:
@@ -158,14 +162,19 @@ manager = ConnectionManager()
 
 @app.websocket("/ws/voice")
 async def websocket_voice_endpoint(websocket: WebSocket):
+    logger.info("🔌 WebSocket connection opened from %s", websocket.client)
     await manager.connect(websocket)
     try:
         while True:
             data = await websocket.receive_json()
+            msg_type = data.get("type")
+            logger.info("📨 WS message received type=%s keys=%s", msg_type, list(data.keys()))
             
-            if data.get("type") == "audio":
+            if msg_type == "audio":
                 audio_b64 = data.get("audio")
-                
+                start_ts = time.time()
+                logger.info("🎙️  Processing audio message (len=%s)", len(audio_b64) if audio_b64 else 0)
+
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
                     tmp.write(base64.b64decode(audio_b64))
                     tmp_path = tmp.name
@@ -173,13 +182,17 @@ async def websocket_voice_endpoint(websocket: WebSocket):
                 try:
                     asr = transcribe_file(tmp_path, language="es")
                     transcript = asr["text"]
+                    logger.info("✅ ASR complete in %.2fs text='%s'", time.time() - start_ts, transcript)
                     
                     await manager.send_personal_message({
                         "type": "transcript",
                         "text": transcript
                     }, websocket)
                     
+                    run_start = time.time()
+                    logger.info("⚙️  pipeline.run start (voice)")
                     out = pipeline.run(transcript)
+                    logger.info("✅ pipeline.run end (voice) in %.2fs", time.time() - run_start)
                     
                     await manager.send_personal_message({
                         "type": "response",
@@ -190,6 +203,7 @@ async def websocket_voice_endpoint(websocket: WebSocket):
                     }, websocket)
                     
                 except Exception as e:
+                    logger.exception("❌ Error handling audio message")
                     await manager.send_personal_message({
                         "type": "error",
                         "message": str(e)
@@ -197,10 +211,13 @@ async def websocket_voice_endpoint(websocket: WebSocket):
                 finally:
                     os.unlink(tmp_path)
             
-            elif data.get("type") == "text":
+            elif msg_type == "text":
                 text = data.get("text")
                 try:
+                    run_start = time.time()
+                    logger.info("💬 pipeline.run start (text) text='%s'", text)
                     out = pipeline.run(text)
+                    logger.info("✅ pipeline.run end (text) in %.2fs", time.time() - run_start)
                     await manager.send_personal_message({
                         "type": "response",
                         "text": out["response"],
@@ -209,16 +226,21 @@ async def websocket_voice_endpoint(websocket: WebSocket):
                         "elapsed_min": out["elapsed_min"]
                     }, websocket)
                 except Exception as e:
+                    logger.exception("❌ Error handling text message")
                     await manager.send_personal_message({
                         "type": "error",
                         "message": str(e)
                     }, websocket)
             
-            elif data.get("type") == "ping":
+            elif msg_type == "ping":
                 await manager.send_personal_message({"type": "pong"}, websocket)
+                logger.info("🏓 pong sent")
+            else:
+                logger.warning("⚠️  Unknown WS message type=%s payload=%s", msg_type, data)
                 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+        logger.info("🔌 WebSocket disconnected %s", websocket.client)
 
 
 # ============================================================================

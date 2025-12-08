@@ -30,6 +30,7 @@ export const AppProvider = ({ children }) => {
   const wsRef = useRef(null)
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
+  const processingTimeoutRef = useRef(null)
 
   // Verificar si AIAvatarKit está disponible al montar
   useEffect(() => {
@@ -37,7 +38,7 @@ export const AppProvider = ({ children }) => {
       try {
         const status = await aiAvatarService.checkStatus()
         setAiAvatarEnabled(status.enabled)
-        console.log('AIAvatarKit status:', status)
+        console.info('[AIAvatar] status', status)
         
         if (status.enabled) {
           // Configurar callbacks de AIAvatarKit
@@ -83,11 +84,11 @@ export const AppProvider = ({ children }) => {
 
   const handleAiAvatarChunk = useCallback((data) => {
     // Actualizar mensajes en streaming
-    console.log('AIAvatar chunk:', data)
+    console.debug('[AIAvatar] chunk', data)
   }, [])
 
   const handleAiAvatarFinal = useCallback((data) => {
-    console.log('AIAvatar final:', data)
+    console.info('[AIAvatar] final', data)
     
     // Agregar mensaje del asistente
     const assistantMessage = {
@@ -98,6 +99,7 @@ export const AppProvider = ({ children }) => {
     }
     
     setMessages(prev => [...prev, assistantMessage])
+    clearProcessingTimeout()
     setIsProcessing(false)
     
     // TTS si está habilitado
@@ -125,18 +127,19 @@ export const AppProvider = ({ children }) => {
         }
         audio.play()
       } catch (error) {
-        console.error('Error playing audio:', error)
+        console.error('[AIAvatar] error playing audio', error)
       }
     }
   }, [])
 
   const handleAiAvatarError = useCallback((error) => {
-    console.error('AIAvatar error:', error)
+    console.error('[AIAvatar] error', error)
     setMessages(prev => [...prev, {
       role: 'system',
       content: `Error AIAvatar: ${error.message}`,
       timestamp: new Date().toISOString()
     }])
+    clearProcessingTimeout()
     setIsProcessing(false)
   }, [])
 
@@ -151,9 +154,34 @@ export const AppProvider = ({ children }) => {
     return new Blob([byteArray], { type: mimeType })
   }
 
+  const clearProcessingTimeout = useCallback(() => {
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current)
+      processingTimeoutRef.current = null
+    }
+  }, [])
+
+  const startProcessingTimeout = useCallback((context = 'desconocido') => {
+    clearProcessingTimeout()
+    processingTimeoutRef.current = setTimeout(() => {
+      console.warn('[Client] procesamiento venció, limpiando estado', { context })
+      setIsProcessing(false)
+      setAvatarExpression('neutral')
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: '⚠️ El servidor tardó demasiado en responder. Intenta de nuevo.',
+        timestamp: new Date().toISOString()
+      }])
+    }, 60000)
+  }, [clearProcessingTimeout])
+
+  useEffect(() => {
+    return () => clearProcessingTimeout()
+  }, [clearProcessingTimeout])
+
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      console.log('Ya conectado al WebSocket')
+      console.info('[WS] ya conectado')
       return
     }
 
@@ -161,14 +189,14 @@ export const AppProvider = ({ children }) => {
     const ws = new WebSocket('ws://localhost:5175/ws/voice')
 
     ws.onopen = () => {
-      console.log('Conectado al WebSocket')
+      console.info('[WS] conectado')
       setWsStatus('connected')
     }
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-        console.log('Mensaje recibido:', data)
+        console.debug('[WS] mensaje recibido', data)
 
         if (data.type === 'transcript') {
           setMessages(prev => [...prev, {
@@ -189,6 +217,7 @@ export const AppProvider = ({ children }) => {
             turn: data.turn,
             elapsed_min: data.elapsed_min
           })
+          clearProcessingTimeout()
           setIsProcessing(false)
           
           if (ttsEnabled) {
@@ -200,26 +229,27 @@ export const AppProvider = ({ children }) => {
             )
           }
         } else if (data.type === 'error') {
-          console.error('Error del servidor:', data.message)
+          console.error('[WS] error del servidor', data.message)
           setMessages(prev => [...prev, {
             role: 'system',
             content: `Error: ${data.message}`,
             timestamp: new Date().toISOString()
           }])
+          clearProcessingTimeout()
           setIsProcessing(false)
         }
       } catch (error) {
-        console.error('Error procesando mensaje:', error)
+        console.error('[WS] error procesando mensaje', error)
       }
     }
 
     ws.onerror = (error) => {
-      console.error('Error de WebSocket:', error)
+      console.error('[WS] error', error)
       setWsStatus('disconnected')
     }
 
     ws.onclose = () => {
-      console.log('WebSocket cerrado')
+      console.info('[WS] cerrado')
       setWsStatus('disconnected')
     }
 
@@ -234,6 +264,21 @@ export const AppProvider = ({ children }) => {
     }
   }, [])
 
+  const sendTextViaWebSocket = useCallback((text) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      console.error('[WS] no conectado, no se envía texto')
+      setIsProcessing(false)
+      clearProcessingTimeout()
+      return
+    }
+
+    console.debug('[WS] enviando texto', text)
+    wsRef.current.send(JSON.stringify({
+      type: 'text',
+      text: text
+    }))
+  }, [clearProcessingTimeout])
+
   const sendTextMessage = useCallback(async (text) => {
     // Agregar mensaje del usuario
     setMessages(prev => [...prev, {
@@ -242,7 +287,9 @@ export const AppProvider = ({ children }) => {
       timestamp: new Date().toISOString()
     }])
     
+    console.info('[Client] enviando texto', text)
     setIsProcessing(true)
+    startProcessingTimeout('texto')
     setAvatarExpression('thinking') // Mostrar expresión de "pensando"
 
     // Usar AIAvatarKit si está habilitado y preferido
@@ -251,50 +298,40 @@ export const AppProvider = ({ children }) => {
         const result = await aiAvatarService.chat(text)
         // El resultado se maneja en los callbacks
         if (!result.success && !result.cancelled) {
-          console.error('AIAvatar chat failed, falling back to WebSocket')
+          console.error('[AIAvatar] chat falló, fallback a WebSocket')
           // Fallback a WebSocket
           sendTextViaWebSocket(text)
         }
       } catch (error) {
-        console.error('AIAvatar error, falling back:', error)
+        console.error('[AIAvatar] error, fallback a WS', error)
         sendTextViaWebSocket(text)
       }
     } else {
       sendTextViaWebSocket(text)
     }
-  }, [aiAvatarEnabled, useAiAvatar])
-
-  const sendTextViaWebSocket = useCallback((text) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket no conectado')
-      setIsProcessing(false)
-      return
-    }
-
-    wsRef.current.send(JSON.stringify({
-      type: 'text',
-      text: text
-    }))
-  }, [])
+  }, [aiAvatarEnabled, useAiAvatar, startProcessingTimeout, sendTextViaWebSocket])
 
   const sendAudio = useCallback((audioBlob) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket no conectado')
+      console.error('[WS] no conectado, no se envía audio')
       return
     }
 
+    console.info('[Client] enviando audio')
     setIsProcessing(true)
+    startProcessingTimeout('audio')
     
     const reader = new FileReader()
     reader.onload = () => {
       const base64Audio = reader.result.split(',')[1]
+      console.debug('[WS] audio base64 size', base64Audio?.length)
       wsRef.current.send(JSON.stringify({
         type: 'audio',
         audio: base64Audio
       }))
     }
     reader.readAsDataURL(audioBlob)
-  }, [])
+  }, [startProcessingTimeout])
 
   const startRecording = useCallback(async () => {
     try {
@@ -319,7 +356,7 @@ export const AppProvider = ({ children }) => {
       mediaRecorderRef.current = mediaRecorder
       setIsRecording(true)
     } catch (error) {
-      console.error('Error al iniciar grabación:', error)
+      console.error('[Recorder] error al iniciar', error)
       alert('Error al acceder al micrófono. Por favor, permite el acceso al micrófono.')
     }
   }, [sendAudio])
@@ -343,7 +380,7 @@ export const AppProvider = ({ children }) => {
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Sesión reiniciada:', data)
+        console.info('[Client] sesión reiniciada', data)
         
         setMessages([])
         setSystemInfo({ turn: 0, elapsed_min: 0 })
