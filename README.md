@@ -64,19 +64,51 @@ npm install
 
 ## ⚙️ Configuración
 
-Crea `.env` en la raíz del proyecto (copiá de `.env.example`):
+Crea `.env` en la raíz del proyecto (copia desde `.env.example`) y completa tus API keys:
 
 ```env
-# LLM Principal
-ANTHROPIC_API_KEY=sk-ant-...
+# ========================================
+# Avatar Virtual Interactivo - Configuración
+# ========================================
+
+# Clave de Anthropic (Claude)
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxx
+
+# Modelo de Claude a usar
 CLAUDE_MODEL=claude-sonnet-4-5-20250929
+
+# Proveedor de LLM: anthropic | ollama
 LLM_PROVIDER=anthropic
+
+# Ruta donde se guarda la memoria de conversación
 MEMORY_PATH=data/prompt_memory.json
 
-# AIAvatarKit (opcional)
-OPENAI_API_KEY=sk-...
-AIAVATAR_ENABLED=true
+# ========================================
+# AIAvatarKit (Speech-to-Speech) - OPCIONAL
+# ========================================
+
+# Habilitar AIAvatarKit (true/false)
+AIAVATAR_ENABLED=false
+
+# Proveedor de LLM para AIAvatarKit: gemini | claude | openai
+AIAVATAR_LLM_PROVIDER=gemini
+
+# Gemini (recomendado para AIAvatarKit)
+GEMINI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxx
+GEMINI_MODEL=gemini-2.0-flash
+
+# OpenAI (opcional)
+# OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxx
+
+# AIAvatarKit settings
+AIAVATAR_DEBUG=true
+AIAVATAR_LANGUAGE=es-ES
+AIAVATAR_WAKEWORDS=Hola,Buenos días,Buenas tardes
+AIAVATAR_VOLUME_THRESHOLD=-30.0
+
+# VOICEVOX (opcional)
 VOICEVOX_BASE_URL=http://127.0.0.1:50021
+VOICEVOX_SPEAKER=1
 ```
 
 > Ver modelos disponibles en la [documentación oficial de Anthropic](https://docs.anthropic.com/claude/docs/models-overview).
@@ -114,7 +146,7 @@ python run_aiavatar.py --mode local
 python run_aiavatar.py --mode server --provider claude
 ```
 
-📖 Ver [docs/AIAVATAR_INTEGRATION.md](docs/AIAVATAR_INTEGRATION.md) para más detalles.
+Más abajo tienes una sección específica con instalación/uso de AIAvatarKit.
 
 ### Opción 3: Script de inicio rápido (macOS/Linux)
 
